@@ -1,6 +1,7 @@
 import { Construct } from "constructs";
 import { Effect, ManagedPolicy, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import {
+  ChainDefinitionBody,
   Fail,
   Pass,
   StateMachine,
@@ -107,11 +108,13 @@ export class CopyOutStateMachineConstruct extends Construct {
 
     canWriteStep.addCatch(fail, { errors: ["WrongRegionError"] });
 
-    const definition = defineDefaults
-      .next(applyDefaults)
-      .next(canWriteStep)
-      .next(distributedMapStep)
-      .next(success);
+    const definition = ChainDefinitionBody.fromChainable(
+      defineDefaults
+        .next(applyDefaults)
+        .next(canWriteStep)
+        .next(distributedMapStep)
+        .next(success)
+    );
 
     // NOTE: we use a technique here to allow optional input parameters to the state machine
     // by defining defaults and then JsonMerging them with the actual input params
@@ -119,7 +122,7 @@ export class CopyOutStateMachineConstruct extends Construct {
       // we give people a window of time in which to create the destination bucket - so this
       // could run a long time
       timeout: props.aggressiveTimes ? Duration.hours(24) : Duration.days(30),
-      definition: definition,
+      definitionBody: definition,
     });
 
     // this is needed to support distributed map - once there is a native CDK for this I presume this goes

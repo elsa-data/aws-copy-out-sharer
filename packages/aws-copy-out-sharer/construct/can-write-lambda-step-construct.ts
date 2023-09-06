@@ -32,6 +32,7 @@ export class CanWriteLambdaStepConstruct extends Construct {
         __dirname,
         "..",
         "..",
+        "..",
         "artifacts",
         "can-write-lambda",
         "can-write-lambda.js"

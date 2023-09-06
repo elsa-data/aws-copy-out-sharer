@@ -61,6 +61,7 @@ export class FargateRunTaskConstruct extends Construct {
           __dirname,
           "..",
           "..",
+          "..",
           "artifacts",
           "rclone-batch-copy-docker-image"
         ),
