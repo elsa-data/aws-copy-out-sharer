@@ -1,24 +1,24 @@
-import { Stack, Tags } from "aws-cdk-lib";
+import { Stack } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { CopyOutStackProps } from "./copy-out-stack-props";
 import { Cluster } from "aws-cdk-lib/aws-ecs";
 import { CopyOutStateMachineConstruct } from "./construct/copy-out-state-machine-construct";
 import { Service } from "aws-cdk-lib/aws-servicediscovery";
-import {
-  createNamespaceFromLookup,
-  createVpcFromLookup,
-} from "./create-from-lookup";
+import { InfrastructureClient } from "@elsa-data/aws-infrastructure-client";
+
+export { CopyOutStackProps, SubnetType } from "./copy-out-stack-props";
 
 export class CopyOutStack extends Stack {
   constructor(scope: Construct, id: string, props: CopyOutStackProps) {
     super(scope, id, props);
 
-    const vpc = createVpcFromLookup(this, props.infrastructureStackName);
+    // our client unlocks the ability to fetch/create CDK objects that match our
+    // installed infrastructure stack (by infrastructure stack name)
+    const infraClient = new InfrastructureClient(props.infrastructureStackName);
 
-    const namespace = createNamespaceFromLookup(
-      this,
-      props.infrastructureStackName
-    );
+    const vpc = infraClient.getVpcFromLookup(this);
+
+    const namespace = infraClient.getNamespaceFromLookup(this);
 
     const cluster = new Cluster(this, "FargateCluster", {
       vpc: vpc,
@@ -31,7 +31,7 @@ export class CopyOutStack extends Stack {
       description: "Parallel file copying service",
     });
 
-    const sm = new CopyOutStateMachineConstruct(this, "CopyOut", {
+    new CopyOutStateMachineConstruct(this, "CopyOut", {
       vpc: vpc,
       vpcSubnetSelection: props.infrastructureSubnetSelection,
       fargateCluster: cluster,
