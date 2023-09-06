@@ -1,0 +1,12 @@
+{
+  "name": "manual",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Manual CDK deployment for development",
+  "dependencies": {
+    "aws-cdk": "2.93.0",
+    "aws-cdk-lib": "2.93.0",
+    "aws-copy-out-sharer": "link:../packages/aws-copy-out-sharer"
+  },
+  "devDependencies": {}
+}

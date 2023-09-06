@@ -1,0 +1,45 @@
+{
+  "name": "@elsa-data/aws-copy-out-sharer",
+  "version": "0.0.0",
+  "description": "CDK project for deploying a Copy Out service into Elsa Data",
+  "homepage": "https://github.com/elsa-data/aws-copy-out-sharer",
+  "license": "MIT",
+  "author": {
+    "name": "Andrew Patterson",
+    "email": "andrew.patterson@umccr.org"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/elsa-data/aws-copy-out-sharer.git"
+  },
+  "main": "copy-out-stack.js",
+  "types": "copy-out-stack.d.ts",
+  "scripts": {
+    "build": "jsii -vvv",
+    "build:watch": "jsii -w",
+    "package": "jsii-pacmak -vvv"
+  },
+  "keywords": [
+    "jsii",
+    "cdk"
+  ],
+  "jsii": {
+    "outdir": "dist",
+    "targets": {}
+  },
+  "dependencies": {
+    "@elsa-data/aws-infrastructure-client": "1.3.0"
+  },
+  "peerDependencies": {
+    "aws-cdk-lib": "^2.93.0",
+    "constructs": "^10.2.70",
+    "@elsa-data/aws-infrastructure-client": "^1.3.0"
+  },
+  "devDependencies": {
+    "aws-cdk-lib": "2.93.0",
+    "constructs": "10.2.70",
+    "jsii": "5.2.2",
+    "jsii-pacmak": "1.88.0",
+    "publib": "0.2.737"
+  }
+}

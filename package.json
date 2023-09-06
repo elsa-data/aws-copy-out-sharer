@@ -1,0 +1,27 @@
+{
+  "name": "aws-copy-out-sharer",
+  "private": true,
+  "version": "0.0.0",
+  "description": "The root package of a mono repo for Elsa Data AWS copy out sharer",
+  "packageManager": "pnpm@8.7.0",
+  "scripts": {
+    "build": "pnpm --stream --filter \"./packages/**\" run build",
+    "watch": "pnpm --stream --filter \"./packages/**\" run build:watch",
+    "package": "pnpm --stream --filter \"./packages/**\" run package",
+    "clean": "git clean -fXd"
+  },
+  "keywords": [],
+  "author": {
+    "name": "University of Melbourne Centre for Cancer Research",
+    "organization": true
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@tsconfig/node18": "18.2.0",
+    "@types/node": "18.17.14",
+    "esbuild": "0.19.2",
+    "prettier": "3.0.3",
+    "ts-node": "10.9.1",
+    "typescript": "5.0.4"
+  }
+}
