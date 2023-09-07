@@ -56,20 +56,10 @@ export class FargateRunTaskConstruct extends Construct {
       // set the stop timeout to the maximum allowed under Fargate - as potentially this will let us finish
       // our rclone operation
       stopTimeout: Duration.seconds(120),
-      image: new AssetImage(
-        join(
-          __dirname,
-          "..",
-          "..",
-          "..",
-          "artifacts",
-          "rclone-batch-copy-docker-image"
-        ),
-        {
-          // note we are forcing the X86 platform because we want to use Fargate spot which is only available intel/x86
-          platform: Platform.LINUX_AMD64,
-        }
-      ),
+      image: new AssetImage(join(__dirname, "rclone-batch-copy-docker-image"), {
+        // note we are forcing the X86 platform because we want to use Fargate spot which is only available intel/x86
+        platform: Platform.LINUX_AMD64,
+      }),
       logging: LogDriver.awsLogs({
         streamPrefix: "elsa-data-copy-out",
         logRetention: RetentionDays.ONE_WEEK,

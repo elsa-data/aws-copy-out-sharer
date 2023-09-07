@@ -28,20 +28,15 @@ export class CanWriteLambdaStepConstruct extends Construct {
 
     const canWriteLambda = new NodejsFunction(this, "CanWriteFunction", {
       vpc: props.vpc,
-      entry: join(
-        __dirname,
-        "..",
-        "..",
-        "..",
-        "artifacts",
-        "can-write-lambda",
-        "can-write-lambda.js"
-      ),
+      entry: join(__dirname, "can-write-lambda", "can-write-lambda.js"),
+      // by specifying the precise runtime - the bundler knows exactly what packages are already in
+      // the base image - and for us can skip bundling @aws-sdk
+      // if we need to move this forward to node 18+ - then we may need to revisit this
+      runtime: Runtime.NODEJS_18_X,
       handler: "handler",
       vpcSubnets: {
         subnetType: props.vpcSubnetSelection,
       },
-      runtime: Runtime.NODEJS_18_X,
       // this seems like plenty of seconds to do a few API calls to S3
       timeout: Duration.seconds(30),
     });
