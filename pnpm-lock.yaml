@@ -41,8 +41,8 @@ importers:
   packages/aws-copy-out-sharer:
     dependencies:
       "@elsa-data/aws-infrastructure-client":
-        specifier: 1.3.0
-        version: 1.3.0(aws-cdk-lib@2.93.0)(constructs@10.2.70)
+        specifier: 1.3.4
+        version: 1.3.4(aws-cdk-lib@2.93.0)(constructs@10.2.70)
     devDependencies:
       aws-cdk-lib:
         specifier: 2.93.0
@@ -690,10 +690,10 @@ packages:
       "@jridgewell/trace-mapping": 0.3.9
     dev: true
 
-  /@elsa-data/aws-infrastructure-client@1.3.0(aws-cdk-lib@2.93.0)(constructs@10.2.70):
+  /@elsa-data/aws-infrastructure-client@1.3.4(aws-cdk-lib@2.93.0)(constructs@10.2.70):
     resolution:
       {
-        integrity: sha512-lavctQG2x1p0aJcm4x4vQ2JcKl7nM7UxciSy6pGv3ECq8HWT+D7hBc5lGcY3+6OQV9LqEt23A5zKGnVy2MHvdQ==,
+        integrity: sha512-qgqBiwdLd4MFb4yLjBpIv2TbIKXlRsYeECohDARXX06LOLgEEP2OuqAXofGkCANZ5HD2gC0LQh9cu7o3OaffDw==,
       }
     peerDependencies:
       aws-cdk-lib: ^2.93.0
@@ -701,7 +701,6 @@ packages:
     dependencies:
       aws-cdk-lib: 2.93.0(constructs@10.2.70)
       constructs: 10.2.70
-      shared: link:../shared
     dev: false
     bundledDependencies:
       - shared
@@ -1880,7 +1879,7 @@ packages:
     dependencies:
       semver: 7.5.4
       shelljs: 0.8.5
-      typescript: 5.3.0-dev.20230905
+      typescript: 5.3.0-dev.20230907
     dev: true
 
   /emoji-regex@8.0.0:
@@ -2911,10 +2910,10 @@ packages:
     hasBin: true
     dev: true
 
-  /typescript@5.3.0-dev.20230905:
+  /typescript@5.3.0-dev.20230907:
     resolution:
       {
-        integrity: sha512-Nl9MoKWN0YYlCvQnw850L4ZgqdmqwVGCi9cAoQDw4PsqRGaWAi9HKizS9xu0q4qgKKsEKetWCZHT8dBtJTGaMg==,
+        integrity: sha512-8yegC0GyY5ug9184BxLq8fLDt08+g8jRfut0QSraLFoT13c39Z6fVoviDEeqJgbnIGVxzAEiNQLUslpKYCyUsg==,
       }
     engines: { node: ">=14.17" }
     hasBin: true
