@@ -31,7 +31,7 @@ export const handler = async (event) => {
   } catch (e) {
     if (e.Code === "PermanentRedirect")
       throw new WrongRegionError(
-        "S3 Put failed because bucket was in the wrong region"
+        "S3 Put failed because bucket was in the wrong region",
       );
 
     if (e.Code === "AccessDenied")

@@ -46,7 +46,7 @@ export class CopyOutStateMachineConstruct extends Construct {
         vpc: props.vpc,
         vpcSubnetSelection: props.vpcSubnetSelection,
         requiredRegion: Stack.of(this).region,
-      }
+      },
     );
 
     const rcloneRunTask = new FargateRunTaskConstruct(
@@ -55,7 +55,7 @@ export class CopyOutStateMachineConstruct extends Construct {
       {
         fargateCluster: props.fargateCluster,
         vpcSubnetSelection: props.vpcSubnetSelection,
-      }
+      },
     ).ecsRunTask;
 
     // our task is an idempotent copy operation so we can retry if we happen to get killed
@@ -70,14 +70,14 @@ export class CopyOutStateMachineConstruct extends Construct {
       "MapStep",
       {
         task: rcloneRunTask,
-      }
+      },
     ).distributedMapStep;
 
     const canWriteStep = canWriteLambdaStep.invocableLambda;
 
     const waitStep = new Wait(this, "Wait X Minutes", {
       time: WaitTime.duration(
-        props.aggressiveTimes ? Duration.seconds(30) : Duration.minutes(10)
+        props.aggressiveTimes ? Duration.seconds(30) : Duration.minutes(10),
       ),
     });
 
@@ -113,7 +113,7 @@ export class CopyOutStateMachineConstruct extends Construct {
         .next(applyDefaults)
         .next(canWriteStep)
         .next(distributedMapStep)
-        .next(success)
+        .next(success),
     );
 
     // NOTE: we use a technique here to allow optional input parameters to the state machine
@@ -138,10 +138,10 @@ export class CopyOutStateMachineConstruct extends Construct {
               resource: "stateMachine",
               resourceName: "*",
             },
-            Stack.of(this)
+            Stack.of(this),
           ),
         ],
-      })
+      }),
     );
 
     // this is needed to support distributed map - once there is a native CDK for this I presume this goes
@@ -157,10 +157,10 @@ export class CopyOutStateMachineConstruct extends Construct {
               resource: "execution",
               resourceName: "*" + "/*",
             },
-            Stack.of(this)
+            Stack.of(this),
           ),
         ],
-      })
+      }),
     );
 
     // this is too broad - but once the CFN native Distributed Map is created - it will handle this for us
@@ -170,7 +170,7 @@ export class CopyOutStateMachineConstruct extends Construct {
         effect: Effect.ALLOW,
         actions: ["lambda:InvokeFunction"],
         resources: ["*"],
-      })
+      }),
     );
 
     this.stateMachine.addToRolePolicy(
@@ -178,16 +178,16 @@ export class CopyOutStateMachineConstruct extends Construct {
         effect: Effect.ALLOW,
         actions: ["ecs:*", "iam:PassRole"],
         resources: ["*"],
-      })
+      }),
     );
 
     // TODO tighten this
     this.stateMachine.role.addManagedPolicy(
-      ManagedPolicy.fromAwsManagedPolicyName("AmazonS3FullAccess")
+      ManagedPolicy.fromAwsManagedPolicyName("AmazonS3FullAccess"),
     );
 
     this.stateMachine.role.addManagedPolicy(
-      ManagedPolicy.fromAwsManagedPolicyName("CloudWatchEventsFullAccess")
+      ManagedPolicy.fromAwsManagedPolicyName("CloudWatchEventsFullAccess"),
     );
 
     props.namespaceService.registerNonIpInstance("StateMachine", {
