@@ -55,7 +55,7 @@ export class CanWriteLambdaStepConstruct extends Construct {
             "s3:ResourceAccount": [Stack.of(this).account],
           },
         },
-      })
+      }),
     );
 
     this.invocableLambda = new LambdaInvoke(
@@ -64,7 +64,7 @@ export class CanWriteLambdaStepConstruct extends Construct {
       {
         lambdaFunction: canWriteLambda,
         resultPath: JsonPath.DISCARD,
-      }
+      },
     );
   }
 }

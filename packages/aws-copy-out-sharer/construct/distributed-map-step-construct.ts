@@ -70,7 +70,7 @@ export class DistributedMapStepConstruct extends Construct {
           BatchInput: {
             "destinationBucketForRclone.$": JsonPath.format(
               "s3:{}",
-              JsonPath.stringAt("$.destinationBucket")
+              JsonPath.stringAt("$.destinationBucket"),
             ),
           },
         },
@@ -86,7 +86,7 @@ export class DistributedMapStepConstruct extends Construct {
             // note: this is not an s3:// URL, it is the peculiar syntax used by rclone
             "s3:{}/{}",
             JsonPath.stringAt(`$$.Map.Item.Value.${bucketColumnName}`),
-            JsonPath.stringAt(`$$.Map.Item.Value.${keyColumnName}`)
+            JsonPath.stringAt(`$$.Map.Item.Value.${keyColumnName}`),
           ),
         },
       },

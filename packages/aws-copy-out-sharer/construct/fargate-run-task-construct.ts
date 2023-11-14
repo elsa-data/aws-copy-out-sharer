@@ -49,7 +49,7 @@ export class FargateRunTaskConstruct extends Construct {
     // we need to give the rclone task the ability to do the copy out in S3
     // TODO can we limit this to reading from our designated buckets and writing out
     taskDefinition.taskRole.addManagedPolicy(
-      ManagedPolicy.fromAwsManagedPolicyName("AmazonS3FullAccess")
+      ManagedPolicy.fromAwsManagedPolicyName("AmazonS3FullAccess"),
     );
 
     const containerDefinition = taskDefinition.addContainer("RcloneContainer", {
@@ -101,7 +101,7 @@ export class FargateRunTaskConstruct extends Construct {
             {
               name: "destination",
               value: JsonPath.stringAt(
-                "$.BatchInput.destinationBucketForRclone"
+                "$.BatchInput.destinationBucketForRclone",
               ),
             },
           ],
@@ -119,7 +119,7 @@ class EcsFargateSpotOnlyLaunchTarget implements IEcsLaunchTarget {
    */
   public bind(
     _task: EcsRunTask,
-    launchTargetOptions: LaunchTargetBindOptions
+    launchTargetOptions: LaunchTargetBindOptions,
   ): EcsLaunchTargetConfig {
     if (!launchTargetOptions.taskDefinition.isFargateCompatible) {
       throw new Error("Supplied TaskDefinition is not compatible with Fargate");
