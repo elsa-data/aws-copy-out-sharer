@@ -69,7 +69,7 @@ DESTINATION="$TEMPD/test3" DEBUG_BANDWIDTH="1B" ./rclone-batch $RCLONE_BINARY ./
 sleep 1
 
 # now send a SIGTERM to the launched job
-kill  %1
+kill %1
 
 # Uncomment to debug invalid result
 # cat "$TEMPD/result.json"
