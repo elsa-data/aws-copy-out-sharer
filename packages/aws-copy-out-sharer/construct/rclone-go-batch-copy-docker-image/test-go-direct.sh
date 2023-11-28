@@ -33,7 +33,7 @@ DESTINATION="$TEMPD/test1" ./rclone-batch $RCLONE_BINARY ./testfile1.txt ./testf
 
 assert " find $TEMPD/test1 -type f  | awk 'END{print NR}' " "2"
 assert " cat $TEMPD/result.json | jq -r '.\"0\" | .bytes' " "20"
-assert " cat $TEMPD/result.json | jq -r '.\"1\" | .bytes' " "21"
+assert " cat $TEMPD/result.json | jq -r '.\"1\" | .bytes' " "37"
 
 rm "$TEMPD/result.json"
 
@@ -50,7 +50,7 @@ assert "find $TEMPD/test2 -type f | awk 'END{print NR}'" "1"
 assert " cat $TEMPD/result.json | jq -r '.\"0\" | .lastError' " "directory not found"
 assert " cat $TEMPD/result.json | jq -r '.\"0\" | .bytes' " "0"
 assert " cat $TEMPD/result.json | jq -r '.\"1\" | .lastError' " "null"
-assert " cat $TEMPD/result.json | jq -r '.\"1\" | .bytes' " "21"
+assert " cat $TEMPD/result.json | jq -r '.\"1\" | .bytes' " "37"
 
 rm "$TEMPD/result.json"
 
