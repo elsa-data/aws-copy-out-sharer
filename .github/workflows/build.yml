@@ -22,7 +22,7 @@ jobs:
       - name: Setup Rclone
         uses: AnimMouse/setup-rclone@v1
 
-      - run: bash test-go-direct.sh
+      - run: ./test-go-direct.sh
         working-directory: packages/aws-copy-out-sharer/construct/rclone-go-batch-copy-docker-image
 #      - run: pnpm run build
 #      - run: pnpm run package
