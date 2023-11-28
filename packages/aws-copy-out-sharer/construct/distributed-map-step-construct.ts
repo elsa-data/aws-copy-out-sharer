@@ -55,7 +55,7 @@ export class DistributedMapStepConstruct extends Construct {
         ItemReader: {
           ReaderConfig: {
             InputType: "CSV",
-            // note we are providing the nominal column names.. there is no header row in the CSV
+            // note we are providing the nominal column names... there is no header row in the CSV
             CSVHeaderLocation: "GIVEN",
             CSVHeaders: [bucketColumnName, keyColumnName],
           },
@@ -68,9 +68,10 @@ export class DistributedMapStepConstruct extends Construct {
         ItemBatcher: {
           MaxItemsPerBatchPath: JsonPath.stringAt("$.maxItemsPerBatch"),
           BatchInput: {
-            "destinationBucketForRclone.$": JsonPath.format(
-              "s3:{}",
+            "destinationForRclone.$": JsonPath.format(
+              "s3:{}/{}",
               JsonPath.stringAt("$.destinationBucket"),
+              JsonPath.stringAt("$.destinationKey"),
             ),
           },
         },
@@ -88,6 +89,16 @@ export class DistributedMapStepConstruct extends Construct {
             JsonPath.stringAt(`$$.Map.Item.Value.${bucketColumnName}`),
             JsonPath.stringAt(`$$.Map.Item.Value.${keyColumnName}`),
           ),
+        },
+        ResultWriter: {
+          Resource: "arn:aws:states:::s3:putObject",
+          Parameters: {
+            "Bucket.$": "$.sourceFilesCsvBucket",
+            "Prefix.$": JsonPath.format(
+              "{}-results",
+              JsonPath.stringAt("$.sourceFilesCsvKey"),
+            ),
+          },
         },
       },
     });

@@ -8,7 +8,7 @@ import { JsonPath } from "aws-cdk-lib/aws-stepfunctions";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import { join } from "path";
 
-type CanWriteLambdaStepProps = {
+type ThawObjectsLambdaStepProps = {
   vpc: IVpc;
   vpcSubnetSelection: SubnetType;
 
@@ -30,10 +30,10 @@ type CanWriteLambdaStepProps = {
  * bucket exists, is in the correct region, and is writeable
  * by us. Throws an exception if any of these conditions is not met.
  */
-export class CanWriteLambdaStepConstruct extends Construct {
+export class ThawObjectsLambdaStepConstruct extends Construct {
   public readonly invocableLambda;
 
-  constructor(scope: Construct, id: string, props: CanWriteLambdaStepProps) {
+  constructor(scope: Construct, id: string, props: ThawObjectsLambdaStepProps) {
     super(scope, id);
 
     const canWriteLambda = new NodejsFunction(this, "CanWriteFunction", {

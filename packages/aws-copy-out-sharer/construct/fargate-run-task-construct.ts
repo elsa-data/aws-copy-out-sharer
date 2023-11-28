@@ -1,5 +1,5 @@
 import { Construct } from "constructs";
-import { ManagedPolicy } from "aws-cdk-lib/aws-iam";
+import { ManagedPolicy, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { IntegrationPattern, JsonPath } from "aws-cdk-lib/aws-stepfunctions";
 import { Duration, Stack, Tags } from "aws-cdk-lib";
 import {
@@ -25,6 +25,16 @@ import { SubnetType } from "aws-cdk-lib/aws-ec2";
 type Props = {
   fargateCluster: ICluster;
   vpcSubnetSelection: SubnetType;
+
+  /**
+   * If true, will allow the run task to copy to a bucket that is
+   * in the same account. Otherwise, and by default, the copy task
+   * is set up to not be able to copy to a bucket in the same account as it
+   * is installed. This is a security mechanism as writes to buckets in the
+   * same account is allowed implicitly but is dangerous. This should only
+   * be set to true for development/testing.
+   */
+  //allowWriteToThisAccount?: boolean; WIP NEED TO IMPLEMENT
 };
 
 export class FargateRunTaskConstruct extends Construct {
@@ -40,7 +50,7 @@ export class FargateRunTaskConstruct extends Construct {
       },
       cpu: 256,
       // there is a warning in the rclone documentation about problems with mem < 1GB - but I think that
-      // is mainly for large syncs.. we do individual file copies so 512 should be fine
+      // is mainly for large syncs... we do individual/small file copies so 512 should be fine
       memoryLimitMiB: 512,
     });
 
@@ -50,6 +60,17 @@ export class FargateRunTaskConstruct extends Construct {
     // TODO can we limit this to reading from our designated buckets and writing out
     taskDefinition.taskRole.addManagedPolicy(
       ManagedPolicy.fromAwsManagedPolicyName("AmazonS3FullAccess"),
+    );
+
+    taskDefinition.taskRole.addToPrincipalPolicy(
+      new PolicyStatement({
+        resources: ["*"],
+        actions: [
+          "states:SendTaskSuccess",
+          "states:SendTaskFailure",
+          "states:SendTaskHeartbeat",
+        ],
+      }),
     );
 
     const containerDefinition = taskDefinition.addContainer("RcloneContainer", {
@@ -78,7 +99,8 @@ export class FargateRunTaskConstruct extends Construct {
 
     // https://github.com/aws/aws-cdk/issues/20013
     this.ecsRunTask = new EcsRunTask(this, "Copy File with Rclone", {
-      integrationPattern: IntegrationPattern.RUN_JOB,
+      integrationPattern: IntegrationPattern.WAIT_FOR_TASK_TOKEN,
+      // .RUN_JOB,
       cluster: props.fargateCluster,
       taskDefinition: taskDefinition,
       launchTarget: new EcsFargateSpotOnlyLaunchTarget({
@@ -102,9 +124,14 @@ export class FargateRunTaskConstruct extends Construct {
           environment: [
             {
               name: "destination",
-              value: JsonPath.stringAt(
-                "$.BatchInput.destinationBucketForRclone",
-              ),
+              // note this might be just a bucket name, or a bucket name with path
+              // (that decision is made higher in the stack)
+              // as far as rclone binary itself is concerned, it does not matter
+              value: JsonPath.stringAt("$.BatchInput.destinationForRclone"),
+            },
+            {
+              name: "tasktoken",
+              value: JsonPath.stringAt("$$.Task.Token"),
             },
           ],
         },

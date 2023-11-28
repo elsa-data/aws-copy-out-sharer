@@ -1,18 +1,12 @@
-const { PutObjectCommand, S3Client } = require("@aws-sdk/client-s3");
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { AccessDeniedError, WrongRegionError } from "./errors";
 
-export const handler = async (event) => {
-  function WrongRegionError(message) {
-    this.name = "WrongRegionError";
-    this.message = message;
-  }
-  WrongRegionError.prototype = new Error();
+interface InvokeEvent {
+  requiredRegion: string;
+  destinationBucket: string;
+}
 
-  function AccessDeniedError(message) {
-    this.name = "AccessDeniedError";
-    this.message = message;
-  }
-  AccessDeniedError.prototype = new Error();
-
+export async function handler(event: InvokeEvent) {
   console.log(event.requiredRegion);
   console.log(event.destinationBucket);
 
@@ -27,8 +21,8 @@ export const handler = async (event) => {
       Body: "A file created by Elsa Data copy out to ensure correct permissions",
     });
 
-    const response = await client.send(putCommand);
-  } catch (e) {
+    await client.send(putCommand);
+  } catch (e: any) {
     if (e.Code === "PermanentRedirect")
       throw new WrongRegionError(
         "S3 Put failed because bucket was in the wrong region",
@@ -39,7 +33,7 @@ export const handler = async (event) => {
 
     throw e;
   }
-};
+}
 
 /*handler({
   requiredRegion: "ap-southeast-2",

@@ -13,6 +13,16 @@ type CanWriteLambdaStepProps = {
   vpcSubnetSelection: SubnetType;
 
   requiredRegion: string;
+
+  /**
+   * If true, will allow this CanWrite lambda to test a bucket that is
+   * in the same account. Otherwise, and by default, the CanWrite lambda
+   * is set up to not be able to test a bucket in the same account as it
+   * is installed. This is a security mechanism as writes to buckets in the
+   * same account is allowed implicitly but is dangerous. This should only
+   * be set to true for development/testing.
+   */
+  allowWriteToThisAccount?: boolean;
 };
 
 /**
@@ -28,12 +38,16 @@ export class CanWriteLambdaStepConstruct extends Construct {
 
     const canWriteLambda = new NodejsFunction(this, "CanWriteFunction", {
       vpc: props.vpc,
-      entry: join(__dirname, "can-write-lambda", "can-write-lambda.js"),
+      entry: join(__dirname, "can-write-lambda", "can-write-lambda.ts"),
       // by specifying the precise runtime - the bundler knows exactly what packages are already in
       // the base image - and for us can skip bundling @aws-sdk
-      // if we need to move this forward to node 18+ - then we may need to revisit this
+      // if we need to move this forward beyond node 18 - then we may need to revisit this
       runtime: Runtime.NODEJS_18_X,
       handler: "handler",
+      bundling: {
+        externalModules: ["aws-sdk"],
+        minify: false,
+      },
       vpcSubnets: {
         subnetType: props.vpcSubnetSelection,
       },
@@ -46,15 +60,17 @@ export class CanWriteLambdaStepConstruct extends Construct {
         effect: Effect.ALLOW,
         actions: ["s3:PutObject"],
         resources: ["*"],
-        conditions: {
-          // yes - that's right - we want to give this lambda the ability to attempt the writes anywhere
-          // EXCEPT where we are deployed
-          // (under the assumption that buckets outside our account must be giving us explicit write permission,
-          //  whilst within our account we get implicit access - in this case we don't want that ability)
-          StringNotEquals: {
-            "s3:ResourceAccount": [Stack.of(this).account],
-          },
-        },
+        // yes - that's right - we want to give this lambda the ability to attempt the writes anywhere
+        // EXCEPT where we are deployed
+        // (under the assumption that buckets outside our account must be giving us explicit write permission,
+        //  whilst within our account we get implicit access - in this case we don't want that ability)
+        conditions: props.allowWriteToThisAccount
+          ? undefined
+          : {
+              StringNotEquals: {
+                "s3:ResourceAccount": [Stack.of(this).account],
+              },
+            },
       }),
     );
 

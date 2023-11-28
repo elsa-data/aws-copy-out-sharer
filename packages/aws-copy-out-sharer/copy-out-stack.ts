@@ -4,7 +4,7 @@ import { CopyOutStackProps } from "./copy-out-stack-props";
 import { Cluster } from "aws-cdk-lib/aws-ecs";
 import { CopyOutStateMachineConstruct } from "./construct/copy-out-state-machine-construct";
 import { Service } from "aws-cdk-lib/aws-servicediscovery";
-import { InfrastructureClient } from "@elsa-data/aws-infrastructure-client";
+import { InfrastructureClient } from "@elsa-data/aws-infrastructure";
 
 export { CopyOutStackProps, SubnetType } from "./copy-out-stack-props";
 
@@ -31,12 +31,18 @@ export class CopyOutStack extends Stack {
       description: "Parallel file copying service",
     });
 
-    new CopyOutStateMachineConstruct(this, "CopyOut", {
+    const copyOut = new CopyOutStateMachineConstruct(this, "CopyOut", {
       vpc: vpc,
       vpcSubnetSelection: props.infrastructureSubnetSelection,
       fargateCluster: cluster,
-      namespaceService: service,
       aggressiveTimes: props.isDevelopment,
+      allowWriteToThisAccount: props.isDevelopment,
+    });
+
+    service.registerNonIpInstance("StateMachine", {
+      customAttributes: {
+        stateMachineArn: copyOut.stateMachine.stateMachineArn,
+      },
     });
   }
 }

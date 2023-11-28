@@ -11,7 +11,6 @@ import {
 } from "aws-cdk-lib/aws-stepfunctions";
 import { Arn, ArnFormat, Duration, Stack } from "aws-cdk-lib";
 import { ICluster } from "aws-cdk-lib/aws-ecs";
-import { Service } from "aws-cdk-lib/aws-servicediscovery";
 import { CanWriteLambdaStepConstruct } from "./can-write-lambda-step-construct";
 import { IVpc, SubnetType } from "aws-cdk-lib/aws-ec2";
 import { DistributedMapStepConstruct } from "./distributed-map-step-construct";
@@ -24,18 +23,22 @@ export type CopyOutStateMachineProps = {
 
   fargateCluster: ICluster;
 
-  namespaceService: Service;
-
   /**
    * Whether the stack should use duration/timeouts that are more suited
    * to demonstration/development. i.e. minutes rather than hours for wait times,
-   * hours rather than days for copy time outs.
+   * hours rather than days for copy time-outs.
    */
   aggressiveTimes?: boolean;
+
+  allowWriteToThisAccount?: boolean;
+
+  // WIP workingBucket workingPrefix
+  // should make it that if specified this is a bucket that exclusively
+  // holds the source CSVs and result CSVs (so we can lock down the S3 perms)
 };
 
 export class CopyOutStateMachineConstruct extends Construct {
-  private readonly stateMachine: StateMachine;
+  private readonly _stateMachine: StateMachine;
   constructor(scope: Construct, id: string, props: CopyOutStateMachineProps) {
     super(scope, id);
 
@@ -46,6 +49,7 @@ export class CopyOutStateMachineConstruct extends Construct {
         vpc: props.vpc,
         vpcSubnetSelection: props.vpcSubnetSelection,
         requiredRegion: Stack.of(this).region,
+        allowWriteToThisAccount: props.allowWriteToThisAccount,
       },
     );
 
@@ -84,6 +88,8 @@ export class CopyOutStateMachineConstruct extends Construct {
     const defineDefaults = new Pass(this, "Define Defaults", {
       parameters: {
         maxItemsPerBatch: 1,
+        requiredRegion: Stack.of(this).region,
+        destinationKey: "",
       },
       resultPath: "$.inputDefaults",
     });
@@ -118,7 +124,7 @@ export class CopyOutStateMachineConstruct extends Construct {
 
     // NOTE: we use a technique here to allow optional input parameters to the state machine
     // by defining defaults and then JsonMerging them with the actual input params
-    this.stateMachine = new StateMachine(this, "StateMachine", {
+    this._stateMachine = new StateMachine(this, "StateMachine", {
       // we give people a window of time in which to create the destination bucket - so this
       // could run a long time
       timeout: props.aggressiveTimes ? Duration.hours(24) : Duration.days(30),
@@ -126,7 +132,7 @@ export class CopyOutStateMachineConstruct extends Construct {
     });
 
     // this is needed to support distributed map - once there is a native CDK for this I presume this goes
-    this.stateMachine.addToRolePolicy(
+    this._stateMachine.addToRolePolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
         actions: ["states:StartExecution"],
@@ -145,7 +151,7 @@ export class CopyOutStateMachineConstruct extends Construct {
     );
 
     // this is needed to support distributed map - once there is a native CDK for this I presume this goes
-    this.stateMachine.addToRolePolicy(
+    this._stateMachine.addToRolePolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
         actions: ["states:DescribeExecution", "states:StopExecution"],
@@ -165,7 +171,7 @@ export class CopyOutStateMachineConstruct extends Construct {
 
     // this is too broad - but once the CFN native Distributed Map is created - it will handle this for us
     // (I think it isn't doing it because of our DummyMap)
-    this.stateMachine.addToRolePolicy(
+    this._stateMachine.addToRolePolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
         actions: ["lambda:InvokeFunction"],
@@ -173,7 +179,7 @@ export class CopyOutStateMachineConstruct extends Construct {
       }),
     );
 
-    this.stateMachine.addToRolePolicy(
+    this._stateMachine.addToRolePolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
         actions: ["ecs:*", "iam:PassRole"],
@@ -182,18 +188,36 @@ export class CopyOutStateMachineConstruct extends Construct {
     );
 
     // TODO tighten this
-    this.stateMachine.role.addManagedPolicy(
+    this._stateMachine.role.addManagedPolicy(
       ManagedPolicy.fromAwsManagedPolicyName("AmazonS3FullAccess"),
     );
 
-    this.stateMachine.role.addManagedPolicy(
+    // i.e perms needed for result writing from distributed map (from AWS docs)
+    // https://docs.aws.amazon.com/step-functions/latest/dg/input-output-resultwriter.html#resultwriter-iam-policies
+    // {
+    //     "Version": "2012-10-17",
+    //     "Statement": [
+    //         {
+    //             "Effect": "Allow",
+    //             "Action": [
+    //                 "s3:PutObject",
+    //                 "s3:GetObject",
+    //                 "s3:ListMultipartUploadParts",
+    //                 "s3:AbortMultipartUpload"
+    //             ],
+    //             "Resource": [
+    //                 "arn:aws:s3:::resultBucket/csvJobs/*"
+    //             ]
+    //         }
+    //     ]
+    // }
+
+    this._stateMachine.role.addManagedPolicy(
       ManagedPolicy.fromAwsManagedPolicyName("CloudWatchEventsFullAccess"),
     );
+  }
 
-    props.namespaceService.registerNonIpInstance("StateMachine", {
-      customAttributes: {
-        stateMachineArn: this.stateMachine.stateMachineArn,
-      },
-    });
+  public get stateMachine() {
+    return this._stateMachine;
   }
 }
