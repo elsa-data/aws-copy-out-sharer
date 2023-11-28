@@ -69,6 +69,8 @@ export class FargateRunTaskConstruct extends Construct {
         RCLONE_CONFIG_S3_PROVIDER: "AWS",
         RCLONE_CONFIG_S3_ENV_AUTH: "true",
         RCLONE_CONFIG_S3_REGION: Stack.of(this).region,
+        // we already establish the bucket exists - so we don't want rclone to also check on each copy
+        RCLONE_S3_NO_CHECK_BUCKET: "true",
       },
     });
 
