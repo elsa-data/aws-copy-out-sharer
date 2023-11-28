@@ -26,7 +26,7 @@ trap 'rm -rf "$TEMPD"' EXIT
 # test 1 (main case of just copying files)
 #
 
-DESTINATION="$TEMPD/test1" ./rclone-batch $RCLONE_BINARY ./testfile1.txt ./testfile2.txt > "$TEMPD/result.json"
+DESTINATION="$TEMPD/test1" ./rclone-batch "$RCLONE_BINARY" ./testfile1.txt ./testfile2.txt > "$TEMPD/result.json"
 
 # Uncomment to debug invalid result
 # cat "$TEMPD/result.json"
@@ -41,7 +41,7 @@ rm "$TEMPD/result.json"
 # test 2 (error cases with one file to fail)
 #
 
-DESTINATION="$TEMPD/test2" ./rclone-batch $RCLONE_BINARY ./afilethatdoesnotexist.txt ./testfile2.txt > "$TEMPD/result.json"
+DESTINATION="$TEMPD/test2" ./rclone-batch "$RCLONE_BINARY" ./afilethatdoesnotexist.txt ./testfile2.txt > "$TEMPD/result.json"
 
 # Uncomment to debug invalid result
 # cat "$TEMPD/result.json"
@@ -63,7 +63,7 @@ rm "$TEMPD/result.json"
 
 # we set the bandwidth to 1B so that it is slow enough that our TERM signal will come mid-process
 # we start this execution in the background
-DESTINATION="$TEMPD/test3" DEBUG_BANDWIDTH="1B" ./rclone-batch $RCLONE_BINARY ./testfile1.txt ./testfile2.txt > "$TEMPD/result.json" &
+DESTINATION="$TEMPD/test3" DEBUG_BANDWIDTH="1B" ./rclone-batch "$RCLONE_BINARY" ./testfile1.txt ./testfile2.txt > "$TEMPD/result.json" &
 
 # wait a small amount
 sleep 1
@@ -72,7 +72,7 @@ sleep 1
 kill %1
 
 # Uncomment to debug invalid result
-# cat "$TEMPD/result.json"
+cat "$TEMPD/result.json"
 
 assert " cat $TEMPD/result.json | jq -r '.\"0\" | .lastError' " "Interrupted by SIGTERM"
 assert " cat $TEMPD/result.json | jq -r '.\"1\" | .lastError' " "Skipped due to SIGTERM received"
