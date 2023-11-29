@@ -8,19 +8,18 @@ RCLONE_BINARY=$(which rclone)
 set -e
 
 # bring in some helpful bash assertions
-. test-assert.sh
+. test-assert.sh --invariant
 
-# build our rclone batch executable
-go build
+# build our rclone-batch executable
+go build rclone-batch.go
 
 # make a temporary directory for the copy destination
+# NOTE: we do not remove this on a EXIT trap as that interferes with the assert.sh exit codes
 TEMPD=$(mktemp -d)
 if [ ! -e "$TEMPD" ]; then
     >&2 echo "Failed to create temp directory"
     exit 1
 fi
-
-trap 'rm -rf "$TEMPD"' EXIT
 
 #
 # test 1 (main case of just copying files)
@@ -78,6 +77,8 @@ assert " cat $TEMPD/result.json | jq -r '.\"0\" | .lastError' " "Interrupted by 
 assert " cat $TEMPD/result.json | jq -r '.\"1\" | .lastError' " "Skipped due to SIGTERM received"
 
 rm "$TEMPD/result.json"
+
+assert "5" "10"
 
 #
 # end overall testing and set return code
