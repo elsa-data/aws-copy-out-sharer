@@ -12,8 +12,8 @@
     "type": "git",
     "url": "git+https://github.com/elsa-data/aws-copy-out-sharer.git"
   },
-  "main": "copy-out-stack.js",
-  "types": "copy-out-stack.d.ts",
+  "main": "out/copy-out-stack.js",
+  "types": "out/copy-out-stack.d.ts",
   "scripts": {
     "build": "jsii -vvv",
     "build:watch": "jsii -w",
@@ -25,7 +25,10 @@
   ],
   "jsii": {
     "outdir": "dist",
-    "targets": {}
+    "targets": {},
+    "tsc": {
+      "outDir": "out"
+    }
   },
   "dependencies": {
     "@elsa-data/aws-infrastructure": "^1.5.1"
