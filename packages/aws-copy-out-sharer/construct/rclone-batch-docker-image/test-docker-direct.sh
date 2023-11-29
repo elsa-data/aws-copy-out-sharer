@@ -15,7 +15,7 @@ fi
 
 # note the /etc files here are not important! We are just using them as source files
 # that happen to already exist in the docker image by default
-docker run -ti --rm \
+docker run --rm \
        --env RB_DESTINATION=/tmp \
        --mount "type=bind,source=$TEMPD,target=/tmp" \
        rclone-batch-image \
