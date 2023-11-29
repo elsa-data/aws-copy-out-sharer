@@ -1,3 +1,4 @@
+Dockerfile
 test/*
 test-*.sh
 rclone-batch

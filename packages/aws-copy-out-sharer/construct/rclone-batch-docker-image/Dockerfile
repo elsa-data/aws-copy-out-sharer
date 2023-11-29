@@ -26,4 +26,6 @@ WORKDIR /data
 
 COPY --from=builder /build/rclone-batch ./
 
-ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/rclone-batch"]
+ENV RB_RCLONE_BINARY "/usr/local/bin/rclone"
+
+ENTRYPOINT ["/sbin/tini", "-vvv", "--", "/data/rclone-batch"]
