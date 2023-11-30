@@ -27,7 +27,8 @@
     "outdir": "dist",
     "targets": {},
     "tsc": {
-      "outDir": "out"
+      "outDir": "out",
+      "rootDir": "src"
     }
   },
   "dependencies": {

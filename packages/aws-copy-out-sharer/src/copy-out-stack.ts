@@ -2,7 +2,7 @@ import { Stack } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { CopyOutStackProps } from "./copy-out-stack-props";
 import { Cluster } from "aws-cdk-lib/aws-ecs";
-import { CopyOutStateMachineConstruct } from "./construct/copy-out-state-machine-construct";
+import { CopyOutStateMachineConstruct } from "./copy-out-state-machine-construct";
 import { Service } from "aws-cdk-lib/aws-servicediscovery";
 import { InfrastructureClient } from "@elsa-data/aws-infrastructure";
 

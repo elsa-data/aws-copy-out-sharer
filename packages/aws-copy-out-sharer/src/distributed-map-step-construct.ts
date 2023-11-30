@@ -31,6 +31,7 @@ export class DistributedMapStepConstruct extends Construct {
     //   },
     //   "Items": [
     //     {
+    //       "protocol: "s3",
     //       "source": "s3:bucket/1.fastq.gz"
     //     },
     //     {
@@ -51,7 +52,7 @@ export class DistributedMapStepConstruct extends Construct {
         // not sure distributed map knows how to handle back-off??
         // https://docs.aws.amazon.com/AmazonECS/latest/userguide/throttling.html
         MaxConcurrency: 80,
-        ToleratedFailurePercentage: 25,
+        ToleratedFailurePercentage: 100,
         ItemReader: {
           ReaderConfig: {
             InputType: "CSV",
@@ -68,11 +69,19 @@ export class DistributedMapStepConstruct extends Construct {
         ItemBatcher: {
           MaxItemsPerBatchPath: JsonPath.stringAt("$.maxItemsPerBatch"),
           BatchInput: {
-            "destinationForRclone.$": JsonPath.format(
+            "rcloneDestination.$": JsonPath.format(
               "s3:{}/{}",
               JsonPath.stringAt("$.destinationBucket"),
               JsonPath.stringAt("$.destinationKey"),
             ),
+            glacierFlexibleRetrievalThawDays: 1,
+            glacierFlexibleRetrievalThawSpeed: "Expedited",
+            glacierDeepArchiveThawDays: 1,
+            glacierDeepArchiveThawSpeed: "Standard",
+            intelligentTieringArchiveThawDays: 1,
+            intelligentTieringArchiveThawSpeed: "Standard",
+            intelligentTieringDeepArchiveThawDays: 1,
+            intelligentTieringDeepArchiveThawSpeed: "Standard",
           },
         },
         ItemProcessor: {
@@ -83,12 +92,10 @@ export class DistributedMapStepConstruct extends Construct {
           },
         },
         ItemSelector: {
-          "source.$": JsonPath.format(
-            // note: this is not an s3:// URL, it is the peculiar syntax used by rclone
-            "s3:{}/{}",
-            JsonPath.stringAt(`$$.Map.Item.Value.${bucketColumnName}`),
-            JsonPath.stringAt(`$$.Map.Item.Value.${keyColumnName}`),
+          "bucket.$": JsonPath.stringAt(
+            `$$.Map.Item.Value.${bucketColumnName}`,
           ),
+          "key.$": JsonPath.stringAt(`$$.Map.Item.Value.${keyColumnName}`),
         },
         ResultWriter: {
           Resource: "arn:aws:states:::s3:putObject",

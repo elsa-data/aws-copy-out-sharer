@@ -15,6 +15,7 @@ import { CanWriteLambdaStepConstruct } from "./can-write-lambda-step-construct";
 import { IVpc, SubnetType } from "aws-cdk-lib/aws-ec2";
 import { DistributedMapStepConstruct } from "./distributed-map-step-construct";
 import { FargateRunTaskConstruct } from "./fargate-run-task-construct";
+import { ThawObjectsLambdaStepConstruct } from "./thaw-objects-lambda-step-construct";
 
 export type CopyOutStateMachineProps = {
   vpc: IVpc;
@@ -53,6 +54,22 @@ export class CopyOutStateMachineConstruct extends Construct {
       },
     );
 
+    const thawObjectsLambdaStep = new ThawObjectsLambdaStepConstruct(
+      this,
+      "ThawObjects",
+      {
+        vpc: props.vpc,
+        vpcSubnetSelection: props.vpcSubnetSelection,
+      },
+    );
+
+    thawObjectsLambdaStep.invocableLambda.addRetry({
+      errors: ["IsThawingError"],
+      interval: Duration.minutes(1),
+      backoffRate: 1,
+      maxAttempts: 15,
+    });
+
     const rcloneRunTask = new FargateRunTaskConstruct(
       this,
       "RcloneFargateTask",
@@ -69,11 +86,14 @@ export class CopyOutStateMachineConstruct extends Construct {
       maxAttempts: 3,
     });
 
+    const distributedStepsChain =
+      thawObjectsLambdaStep.invocableLambda.next(rcloneRunTask);
+
     const distributedMapStep = new DistributedMapStepConstruct(
       this,
       "MapStep",
       {
-        task: rcloneRunTask,
+        task: distributedStepsChain, //rcloneRunTask,
       },
     ).distributedMapStep;
 

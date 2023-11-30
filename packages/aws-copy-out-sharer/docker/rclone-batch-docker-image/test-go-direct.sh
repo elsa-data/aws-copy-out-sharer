@@ -25,6 +25,9 @@ fi
 
 export RB_RCLONE_BINARY
 
+# our tests do return exit codes so we need to *not* fail on error
+set +e
+
 #
 # Test 1
 #
@@ -32,8 +35,11 @@ echo "Test 1 - copying two files"
 
 RB_DESTINATION="$TEMPD/test1" ./rclone-batch ./testfile1.txt ./testfile2.txt > "$TEMPD/result.json"
 
+test1_exit=$?
+
 cat "$TEMPD/result.json"
 
+assert " echo $test1_exit " "0"
 assert " find $TEMPD/test1 -type f  | awk 'END{print NR}' " "2"
 assert " cat $TEMPD/result.json | jq -r '.[0] | .bytes' " "20"
 assert " cat $TEMPD/result.json | jq -r '.[1] | .bytes' " "37"
@@ -47,8 +53,11 @@ echo "Test 2 - copying two files but one not present/fails"
 
 RB_DESTINATION="$TEMPD/test2" ./rclone-batch ./afilethatdoesnotexist.txt ./testfile2.txt > "$TEMPD/result.json"
 
+test2_exit=$?
+
 cat "$TEMPD/result.json"
 
+assert " echo $test2_exit " "1"
 assert "find $TEMPD/test2 -type f | awk 'END{print NR}'" "1"
 assert " cat $TEMPD/result.json | jq -r '.[0] | .lastError' " "directory not found"
 assert " cat $TEMPD/result.json | jq -r '.[0] | .bytes' " "0"
@@ -66,8 +75,9 @@ rm "$TEMPD/result.json"
 echo "Test 3 - copying two files but signals tells us to stop"
 
 # we set the bandwidth to 1B so that it is slow enough that our TERM signal will come mid-process
+# we set the signal wait because otherwise the test will run for more than a minute
 # we start this execution in the background
-RB_DESTINATION="$TEMPD/test3" RB_DEBUG_BANDWIDTH="1B" ./rclone-batch ./testfile1.txt ./testfile2.txt > "$TEMPD/result.json" &
+RB_DESTINATION="$TEMPD/test3" RB_DEBUG_BANDWIDTH="1B" RB_DEBUG_SIGNAL_WAIT="5" ./rclone-batch ./testfile1.txt ./testfile2.txt > "$TEMPD/result.json" &
 
 # wait a small amount
 sleep 1
@@ -75,10 +85,13 @@ sleep 1
 # now send a SIGTERM to the launched job
 kill %1
 
+# but still wait for it to finish as it intercepts the SIGTERM
+wait %1
+
 cat "$TEMPD/result.json"
 
 assert " cat $TEMPD/result.json | jq -r '.[0] | .lastError' " "Interrupted by SIGTERM"
-assert " cat $TEMPD/result.json | jq -r '.[1] | .lastError' " "Skipped due to SIGTERM received"
+assert " cat $TEMPD/result.json | jq -r '.[1] | .lastError' " "Skipped due to previous SIGTERM received"
 
 rm "$TEMPD/result.json"
 

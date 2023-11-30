@@ -8,7 +8,7 @@ import { JsonPath } from "aws-cdk-lib/aws-stepfunctions";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import { join } from "path";
 
-type ThawObjectsLambdaStepProps = {
+type CanWriteLambdaStepProps = {
   vpc: IVpc;
   vpcSubnetSelection: SubnetType;
 
@@ -19,7 +19,7 @@ type ThawObjectsLambdaStepProps = {
    * in the same account. Otherwise, and by default, the CanWrite lambda
    * is set up to not be able to test a bucket in the same account as it
    * is installed. This is a security mechanism as writes to buckets in the
-   * same account is allowed implictly but is dangerous. This should only
+   * same account is allowed implicitly but is dangerous. This should only
    * be set to true for development/testing.
    */
   allowWriteToThisAccount?: boolean;
@@ -30,20 +30,30 @@ type ThawObjectsLambdaStepProps = {
  * bucket exists, is in the correct region, and is writeable
  * by us. Throws an exception if any of these conditions is not met.
  */
-export class ThawObjectsLambdaStepConstruct extends Construct {
+export class CanWriteLambdaStepConstruct extends Construct {
   public readonly invocableLambda;
 
-  constructor(scope: Construct, id: string, props: ThawObjectsLambdaStepProps) {
+  constructor(scope: Construct, id: string, props: CanWriteLambdaStepProps) {
     super(scope, id);
 
     const canWriteLambda = new NodejsFunction(this, "CanWriteFunction", {
       vpc: props.vpc,
-      entry: join(__dirname, "can-write-lambda", "can-write-lambda.js"),
+      entry: join(
+        __dirname,
+        "..",
+        "lambda",
+        "can-write-lambda",
+        "can-write-lambda.ts",
+      ),
       // by specifying the precise runtime - the bundler knows exactly what packages are already in
       // the base image - and for us can skip bundling @aws-sdk
       // if we need to move this forward beyond node 18 - then we may need to revisit this
       runtime: Runtime.NODEJS_18_X,
       handler: "handler",
+      bundling: {
+        externalModules: ["aws-sdk"],
+        minify: false,
+      },
       vpcSubnets: {
         subnetType: props.vpcSubnetSelection,
       },

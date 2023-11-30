@@ -7,10 +7,10 @@ interface InvokeEvent {
 }
 
 export async function handler(event: InvokeEvent) {
-  console.log(event.requiredRegion);
-  console.log(event.destinationBucket);
+  console.log(JSON.stringify(event, null, 2));
 
-  // we are being super specific here - the required region is where we are going
+  // we are being super specific here - more so than our normal client creation
+  // the "required region" is where we are going
   // to make our client - in order to ensure we get 301 Redirects for buckets outside our location
   const client = new S3Client({ region: event.requiredRegion });
 

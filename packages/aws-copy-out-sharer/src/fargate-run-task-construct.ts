@@ -1,7 +1,7 @@
 import { Construct } from "constructs";
 import { ManagedPolicy, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { IntegrationPattern, JsonPath } from "aws-cdk-lib/aws-stepfunctions";
-import { Duration, Stack, Tags } from "aws-cdk-lib";
+import { Duration, Stack } from "aws-cdk-lib";
 import {
   AssetImage,
   CpuArchitecture,
@@ -54,7 +54,7 @@ export class FargateRunTaskConstruct extends Construct {
       memoryLimitMiB: 512,
     });
 
-    Tags.of(taskDefinition).add("test", "tag");
+    // Tags.of(taskDefinition).add("test", "tag");
 
     // we need to give the rclone task the ability to do the copy out in S3
     // TODO can we limit this to reading from our designated buckets and writing out
@@ -74,13 +74,16 @@ export class FargateRunTaskConstruct extends Construct {
     );
 
     const containerDefinition = taskDefinition.addContainer("RcloneContainer", {
-      // set the stop timeout to the maximum allowed under Fargate - as potentially this will let us finish
-      // our rclone operation
+      // set the stop timeout to the maximum allowed under Fargate Spot
+      // potentially this will let us finish our rclone operation (!!! - we don't actually try to let rclone finish - see Docker image - we should)
       stopTimeout: Duration.seconds(120),
-      image: new AssetImage(join(__dirname, "rclone-batch-copy-docker-image"), {
-        // note we are forcing the X86 platform because we want to use Fargate spot which is only available intel/x86
-        platform: Platform.LINUX_AMD64,
-      }),
+      image: new AssetImage(
+        join(__dirname, "..", "docker", "rclone-batch-docker-image"),
+        {
+          // note we are forcing the X86 platform because we want to use Fargate spot which is only available intel/x86
+          platform: Platform.LINUX_AMD64,
+        },
+      ),
       logging: LogDriver.awsLogs({
         streamPrefix: "elsa-data-copy-out",
         logRetention: RetentionDays.ONE_WEEK,
@@ -109,28 +112,27 @@ export class FargateRunTaskConstruct extends Construct {
       subnets: {
         subnetType: props.vpcSubnetSelection,
       },
-      resultSelector: {
-        // NOTE almost any amount of output can cause the joint result to overflow..
-        // best to look up all this data at the ECS Task level
-        // have left these here to show how you can export ECS output if you want
-        // "capacityProviderName.$": JsonPath.stringAt("$.CapacityProviderName"),
-        // "stoppedAt.$": JsonPath.numberAt("$.StoppedAt"),
-        // "stoppedReason.$": JsonPath.stringAt("$.StoppedReason"),
-      },
+      //resultSelector: {
+      // "rclone.$": JsonPath.objectAt("$"),
+      // "capacityProviderName.$": JsonPath.stringAt("$.CapacityProviderName"),
+      //"stoppedAt.$": JsonPath.numberAt("$.StoppedAt"),
+      //"stoppedReason.$": JsonPath.stringAt("$.StoppedReason"),
+      // },
+      resultPath: "$.rcloneResult",
       containerOverrides: [
         {
           containerDefinition: containerDefinition,
-          command: JsonPath.listAt("$.Items[*].source"),
+          command: JsonPath.listAt("$.Items[*].rcloneSource"),
           environment: [
             {
-              name: "destination",
+              name: "RB_DESTINATION",
               // note this might be just a bucket name, or a bucket name with path
               // (that decision is made higher in the stack)
               // as far as rclone binary itself is concerned, it does not matter
-              value: JsonPath.stringAt("$.BatchInput.destinationForRclone"),
+              value: JsonPath.stringAt("$.BatchInput.rcloneDestination"),
             },
             {
-              name: "tasktoken",
+              name: "RB_TASK_TOKEN",
               value: JsonPath.stringAt("$$.Task.Token"),
             },
           ],
