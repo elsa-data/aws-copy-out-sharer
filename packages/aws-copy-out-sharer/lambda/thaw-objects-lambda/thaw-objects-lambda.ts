@@ -12,10 +12,6 @@ interface ThawObjectsEvent {
   }[];
 
   BatchInput: {
-    // ...
-    // there are other fields in the batch input that we are not interested in - we pass them on
-    // ...
-
     glacierFlexibleRetrievalThawDays: number;
     glacierFlexibleRetrievalThawSpeed: string;
 
@@ -148,13 +144,5 @@ export async function handler(event: ThawObjectsEvent) {
       `${isThawing}/${event.Items.length} are in the process of thawing`,
     );
 
-  return {
-    // Note we are converting the objects to rclone format here
-    // A better spot would be in the Fargate run task but the JsonPath
-    // for that would be a nightmare
-    Items: event.Items.map((a) => ({
-      rcloneSource: `s3:${a.bucket}/${a.key}`,
-    })),
-    BatchInput: event.BatchInput,
-  };
+  return {};
 }

@@ -3,29 +3,29 @@ import { Effect, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { Duration } from "aws-cdk-lib";
 import { LambdaInvoke } from "aws-cdk-lib/aws-stepfunctions-tasks";
 import { Runtime } from "aws-cdk-lib/aws-lambda";
-import { IVpc, SubnetType } from "aws-cdk-lib/aws-ec2";
 import { JsonPath } from "aws-cdk-lib/aws-stepfunctions";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import { join } from "path";
 
-type ThawObjectsLambdaStepProps = {
-  vpc: IVpc;
-  vpcSubnetSelection: SubnetType;
-};
+type Props = {};
 
 /**
- * A construct for a Steps function that tests whether an S3
- * bucket exists, is in the correct region, and is writeable
- * by us. Throws an exception if any of these conditions is not met.
+ * A construct for a Steps function that tests if a set
+ * of input files are available for copying (i.e. in active
+ * storage) and if not, triggers a restore on them. Whenever
+ * any input file is not available - this lambda throws a
+ * IsThawingError (at the end of processing all of them).
+ *
+ * It can then be used in a loop waiting
+ * for thawing to finish - by Retry/Catching this error.
  */
 export class ThawObjectsLambdaStepConstruct extends Construct {
   public readonly invocableLambda;
 
-  constructor(scope: Construct, id: string, props: ThawObjectsLambdaStepProps) {
+  constructor(scope: Construct, id: string, _props: Props) {
     super(scope, id);
 
     const thawObjectsLambda = new NodejsFunction(this, "ThawObjectsFunction", {
-      vpc: props.vpc,
       entry: join(
         __dirname,
         "..",
@@ -36,19 +36,19 @@ export class ThawObjectsLambdaStepConstruct extends Construct {
       runtime: Runtime.NODEJS_20_X,
       handler: "handler",
       bundling: {
+        // for a small method it is sometimes easier if it can be viewed
+        // in the AWS console un-minified
         minify: false,
       },
-      vpcSubnets: {
-        subnetType: props.vpcSubnetSelection,
-      },
-      // this seems like plenty of seconds to do a few API calls to S3
-      timeout: Duration.seconds(300),
+      // we can theoretically need to loop through 1000s of objects
+      // so we give ourselves plenty of time
+      timeout: Duration.seconds(60 * 5),
     });
 
     thawObjectsLambda.addToRolePolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
-        actions: ["s3:*"],
+        actions: ["s3:GetObject", "s3:RestoreObject"],
         resources: ["*"],
       }),
     );

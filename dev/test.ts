@@ -51,7 +51,7 @@ async function makeTestObject(
 
 async function createTestData() {
   const sourceObjects = {
-    [`${testFolderSrc}/1.bin`]: StorageClass.DEEP_ARCHIVE,
+    [`${testFolderSrc}/1.bin`]: StorageClass.GLACIER_IR,
     [`${testFolderSrc}/2.bin`]: StorageClass.STANDARD,
     [`${testFolderSrc}/3.bin`]: StorageClass.GLACIER,
   };

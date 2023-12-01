@@ -1,7 +1,6 @@
 import { Stack } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { CopyOutStackProps } from "./copy-out-stack-props";
-import { Cluster } from "aws-cdk-lib/aws-ecs";
 import { CopyOutStateMachineConstruct } from "./copy-out-state-machine-construct";
 import { Service } from "aws-cdk-lib/aws-servicediscovery";
 import { InfrastructureClient } from "@elsa-data/aws-infrastructure";
@@ -20,11 +19,6 @@ export class CopyOutStack extends Stack {
 
     const namespace = infraClient.getNamespaceFromLookup(this);
 
-    const cluster = new Cluster(this, "FargateCluster", {
-      vpc: vpc,
-      enableFargateCapacityProviders: true,
-    });
-
     const service = new Service(this, "Service", {
       namespace: namespace,
       name: "CopyOut",
@@ -34,7 +28,6 @@ export class CopyOutStack extends Stack {
     const copyOut = new CopyOutStateMachineConstruct(this, "CopyOut", {
       vpc: vpc,
       vpcSubnetSelection: props.infrastructureSubnetSelection,
-      fargateCluster: cluster,
       aggressiveTimes: props.isDevelopment,
       allowWriteToThisAccount: props.isDevelopment,
     });

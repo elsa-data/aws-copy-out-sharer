@@ -10,19 +10,16 @@ import {
   WaitTime,
 } from "aws-cdk-lib/aws-stepfunctions";
 import { Arn, ArnFormat, Duration, Stack } from "aws-cdk-lib";
-import { ICluster } from "aws-cdk-lib/aws-ecs";
 import { CanWriteLambdaStepConstruct } from "./can-write-lambda-step-construct";
 import { IVpc, SubnetType } from "aws-cdk-lib/aws-ec2";
-import { DistributedMapStepConstruct } from "./distributed-map-step-construct";
-import { FargateRunTaskConstruct } from "./fargate-run-task-construct";
-import { ThawObjectsLambdaStepConstruct } from "./thaw-objects-lambda-step-construct";
+import { ThawObjectsMapConstruct } from "./thaw-objects-map-construct";
+import { CopyOutStateMachineInput } from "./copy-out-state-machine-input";
+import { RcloneMapConstruct } from "./rclone-map-construct";
 
 export type CopyOutStateMachineProps = {
   vpc: IVpc;
 
   vpcSubnetSelection: SubnetType;
-
-  fargateCluster: ICluster;
 
   /**
    * Whether the stack should use duration/timeouts that are more suited
@@ -47,55 +44,15 @@ export class CopyOutStateMachineConstruct extends Construct {
       this,
       "CanWrite",
       {
-        vpc: props.vpc,
-        vpcSubnetSelection: props.vpcSubnetSelection,
         requiredRegion: Stack.of(this).region,
         allowWriteToThisAccount: props.allowWriteToThisAccount,
       },
     );
 
-    const thawObjectsLambdaStep = new ThawObjectsLambdaStepConstruct(
-      this,
-      "ThawObjects",
-      {
-        vpc: props.vpc,
-        vpcSubnetSelection: props.vpcSubnetSelection,
-      },
-    );
-
-    thawObjectsLambdaStep.invocableLambda.addRetry({
-      errors: ["IsThawingError"],
-      interval: Duration.minutes(1),
-      backoffRate: 1,
-      maxAttempts: 15,
+    const rcloneMap = new RcloneMapConstruct(this, "RcloneMap", {
+      vpc: props.vpc,
+      vpcSubnetSelection: props.vpcSubnetSelection,
     });
-
-    const rcloneRunTask = new FargateRunTaskConstruct(
-      this,
-      "RcloneFargateTask",
-      {
-        fargateCluster: props.fargateCluster,
-        vpcSubnetSelection: props.vpcSubnetSelection,
-      },
-    ).ecsRunTask;
-
-    // our task is an idempotent copy operation so we can retry if we happen to get killed
-    // (possible given we are using Spot fargate)
-    rcloneRunTask.addRetry({
-      errors: ["States.TaskFailed"],
-      maxAttempts: 3,
-    });
-
-    const distributedStepsChain =
-      thawObjectsLambdaStep.invocableLambda.next(rcloneRunTask);
-
-    const distributedMapStep = new DistributedMapStepConstruct(
-      this,
-      "MapStep",
-      {
-        task: distributedStepsChain, //rcloneRunTask,
-      },
-    ).distributedMapStep;
 
     const canWriteStep = canWriteLambdaStep.invocableLambda;
 
@@ -105,12 +62,14 @@ export class CopyOutStateMachineConstruct extends Construct {
       ),
     });
 
+    const defaults: Partial<CopyOutStateMachineInput> = {
+      maxItemsPerBatch: 1,
+      requiredRegion: Stack.of(this).region,
+      destinationKey: "",
+    };
+
     const defineDefaults = new Pass(this, "Define Defaults", {
-      parameters: {
-        maxItemsPerBatch: 1,
-        requiredRegion: Stack.of(this).region,
-        destinationKey: "",
-      },
+      parameters: defaults,
       resultPath: "$.inputDefaults",
     });
 
@@ -134,11 +93,14 @@ export class CopyOutStateMachineConstruct extends Construct {
 
     canWriteStep.addCatch(fail, { errors: ["WrongRegionError"] });
 
+    const thawObjectsMap = new ThawObjectsMapConstruct(this, "ThawObjects", {});
+
     const definition = ChainDefinitionBody.fromChainable(
       defineDefaults
         .next(applyDefaults)
         .next(canWriteStep)
-        .next(distributedMapStep)
+        .next(thawObjectsMap.distributedMap)
+        .next(rcloneMap.distributedMap)
         .next(success),
     );
 
@@ -150,6 +112,8 @@ export class CopyOutStateMachineConstruct extends Construct {
       timeout: props.aggressiveTimes ? Duration.hours(24) : Duration.days(30),
       definitionBody: definition,
     });
+
+    thawObjectsMap.distributedMap.grantNestedPermissions(this._stateMachine);
 
     // this is needed to support distributed map - once there is a native CDK for this I presume this goes
     this._stateMachine.addToRolePolicy(

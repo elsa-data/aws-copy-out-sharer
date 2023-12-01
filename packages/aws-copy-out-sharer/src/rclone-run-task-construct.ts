@@ -37,7 +37,7 @@ type Props = {
   //allowWriteToThisAccount?: boolean; WIP NEED TO IMPLEMENT
 };
 
-export class FargateRunTaskConstruct extends Construct {
+export class RcloneRunTaskConstruct extends Construct {
   public readonly ecsRunTask: EcsRunTask;
 
   constructor(scope: Construct, id: string, props: Props) {
@@ -88,6 +88,8 @@ export class FargateRunTaskConstruct extends Construct {
         streamPrefix: "elsa-data-copy-out",
         logRetention: RetentionDays.ONE_WEEK,
       }),
+      // eg the equivalent of
+      // RCLONE_CONFIG_S3_TYPE=s3 RCLONE_CONFIG_S3_PROVIDER=AWS RCLONE_CONFIG_S3_ENV_AUTH=true RCLONE_CONFIG_S3_REGION=ap-southeast-2 rclone copy src dest
       environment: {
         RCLONE_CONFIG_S3_TYPE: "s3",
         RCLONE_CONFIG_S3_PROVIDER: "AWS",
@@ -98,12 +100,10 @@ export class FargateRunTaskConstruct extends Construct {
       },
     });
 
-    // RCLONE_CONFIG_S3_TYPE=s3 RCLONE_CONFIG_S3_PROVIDER=AWS RCLONE_CONFIG_S3_ENV_AUTH=true RCLONE_CONFIG_S3_REGION=ap-southeast-2 rclone copy src dest
-
     // https://github.com/aws/aws-cdk/issues/20013
     this.ecsRunTask = new EcsRunTask(this, "Copy File with Rclone", {
+      // we use task tokens as we want to return rclone stats/results
       integrationPattern: IntegrationPattern.WAIT_FOR_TASK_TOKEN,
-      // .RUN_JOB,
       cluster: props.fargateCluster,
       taskDefinition: taskDefinition,
       launchTarget: new EcsFargateSpotOnlyLaunchTarget({
