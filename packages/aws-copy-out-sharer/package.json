@@ -1,7 +1,7 @@
 {
   "name": "@elsa-data/aws-copy-out-sharer",
   "version": "0.0.0",
-  "description": "CDK project for deploying a Copy Out service into Elsa Data",
+  "description": "CDK constructs for a AWS Steps machine that copies objects",
   "homepage": "https://github.com/elsa-data/aws-copy-out-sharer",
   "license": "MIT",
   "author": {
@@ -12,16 +12,19 @@
     "type": "git",
     "url": "git+https://github.com/elsa-data/aws-copy-out-sharer.git"
   },
-  "main": "out/copy-out-stack.js",
-  "types": "out/copy-out-stack.d.ts",
+  "main": "out/copy-out-state-machine-construct.js",
+  "types": "out/copy-out-state-machine-construct.d.ts",
   "scripts": {
-    "build": "jsii -vvv",
+    "build": "jsii",
     "build:watch": "jsii -w",
-    "package": "jsii-pacmak -vvv"
+    "package": "jsii-pacmak"
   },
   "keywords": [
     "jsii",
-    "cdk"
+    "cdk",
+    "s3",
+    "steps",
+    "copy"
   ],
   "jsii": {
     "outdir": "dist",
@@ -31,18 +34,15 @@
       "rootDir": "src"
     }
   },
-  "dependencies": {
-    "@elsa-data/aws-infrastructure": "^1.5.1"
-  },
   "peerDependencies": {
-    "aws-cdk-lib": "^2.108.1",
+    "aws-cdk-lib": "^2.113.0",
     "constructs": "^10.3.0"
   },
   "devDependencies": {
-    "aws-cdk-lib": "2.108.1",
+    "aws-cdk-lib": "2.113.0",
     "constructs": "10.3.0",
-    "jsii": "5.2.29",
-    "jsii-pacmak": "1.91.0",
-    "publib": "0.2.745"
+    "jsii": "5.2.35",
+    "jsii-pacmak": "1.92.0",
+    "publib": "0.2.756"
   }
 }

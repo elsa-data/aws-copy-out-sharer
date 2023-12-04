@@ -13,9 +13,11 @@
     "@aws-sdk/client-s3": "3.450.0",
     "@aws-sdk/client-servicediscovery": "3.450.0",
     "@aws-sdk/client-sfn": "3.450.0",
-    "aws-cdk": "2.108.1",
-    "aws-cdk-lib": "2.108.1",
-    "aws-copy-out-sharer": "link:../packages/aws-copy-out-sharer"
+    "@elsa-data/aws-infrastructure": "1.5.1",
+    "aws-cdk": "2.113.0",
+    "aws-cdk-lib": "2.113.0",
+    "aws-copy-out-sharer": "link:../packages/aws-copy-out-sharer",
+    "constructs": "10.3.0"
   },
   "devDependencies": {}
 }

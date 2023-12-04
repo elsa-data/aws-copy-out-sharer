@@ -3,14 +3,17 @@ import { JsonPath } from "aws-cdk-lib/aws-stepfunctions";
 import { S3CsvDistributedMap } from "./s3-csv-distributed-map";
 import { ThawObjectsLambdaStepConstruct } from "./thaw-objects-lambda-step-construct";
 import { Duration } from "aws-cdk-lib";
-import { CopyOutStateMachineInputKeys } from "./copy-out-state-machine-input";
+import { SOURCE_FILES_CSV_KEY_FIELD_NAME } from "./copy-out-state-machine-input";
 
-type Props = {};
+type Props = {
+  workingBucket: string;
+  workingBucketPrefixKey: string;
+};
 
 export class ThawObjectsMapConstruct extends Construct {
   public readonly distributedMap: S3CsvDistributedMap;
 
-  constructor(scope: Construct, id: string, _props: Props) {
+  constructor(scope: Construct, id: string, props: Props) {
     super(scope, id);
 
     const thawObjectsLambdaStep = new ThawObjectsLambdaStepConstruct(
@@ -31,21 +34,19 @@ export class ThawObjectsMapConstruct extends Construct {
     const bucketColumnName = "b";
     const keyColumnName = "k";
 
-    // this odd construct just makes sure that the JSON paths we specify
-    // here correspond with fields in the master "input" schema for the
-    // overall Steps function
-    const bucketKeyName: CopyOutStateMachineInputKeys = "sourceFilesCsvBucket";
-    const keyKeyName: CopyOutStateMachineInputKeys = "sourceFilesCsvKey";
-
     this.distributedMap = new S3CsvDistributedMap(this, "ThawObjectsMap", {
       // we do not expect any failures of these functions and if we
-      // do - we are fully prepared for us to move onto the rclone
+      // do get one - we are fully prepared for us to move onto the rclone
       // steps where we will get proper error messages if the copies fail
       toleratedFailurePercentage: 100,
       itemReaderCsvHeaders: [bucketColumnName, keyColumnName],
       itemReader: {
-        "Bucket.$": `$.${bucketKeyName}`,
-        "Key.$": `$.${keyKeyName}`,
+        Bucket: props.workingBucket,
+        "Key.$": JsonPath.format(
+          "{}{}",
+          props.workingBucketPrefixKey,
+          JsonPath.stringAt(`$.${SOURCE_FILES_CSV_KEY_FIELD_NAME}`),
+        ),
       },
       itemSelector: {
         "bucket.$": JsonPath.stringAt(`$$.Map.Item.Value.${bucketColumnName}`),

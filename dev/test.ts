@@ -5,31 +5,152 @@ import {
   DiscoverInstancesCommand,
   ServiceDiscoveryClient,
 } from "@aws-sdk/client-servicediscovery";
-
-/**
- * The only configurable item needed for the test cases - set this to a bucket you have
- * full access to. Ideally the bucket should have a lifecycle that auto expires objects after 1 day.
- */
-const TEST_BUCKET = "elsa-data-tmp";
+import {
+  TEST_BUCKET,
+  TEST_BUCKET_OBJECT_PREFIX,
+  TEST_BUCKET_WORKING_PREFIX,
+} from "./constants";
 
 const discoveryClient = new ServiceDiscoveryClient({});
 const s3Client = new S3Client({});
 const sfnClient = new SFNClient({});
 
-const testFolder = randomBytes(16).toString("hex");
-const testFolderSrc = testFolder + "-src";
-const testFolderDest = testFolder + "-dest";
+// generate a unique run folder for this execution of the entire test suite
+const uniqueFolder = randomBytes(8).toString("hex");
 
-async function makeObjectListCsv(key: string, keys: string[]) {
+/**
+ * Put a list of objects as a CSV into an object.
+ *
+ * @param absoluteCsvKey the key of the CSV in the working folder
+ * @param keysBucket the source bucket of the objects
+ * @param keys the keys of the objects
+ */
+async function makeObjectListCsv(
+  absoluteCsvKey: string,
+  keysBucket: string,
+  keys: string[],
+) {
   let content = "";
   for (const k of keys) {
-    content += `${TEST_BUCKET},"${k}"\n`;
+    content += `${keysBucket},"${k}"\n`;
   }
   const response = await s3Client.send(
     new PutObjectCommand({
       Bucket: TEST_BUCKET,
-      Key: key,
+      Key: absoluteCsvKey,
       Body: content,
+    }),
+  );
+}
+
+function getPaths(testNumber: number) {
+  const tsvName = `${testNumber}-objects-to-copy.tsv`;
+
+  return {
+    // because this must exist in the working folder - we need it
+    // both as a relative path (how we will refer to it within the steps)
+    // and an absolute path (for use outside our steps)
+    testFolderObjectsTsvRelative: `${uniqueFolder}/${tsvName}`,
+    testFolderObjectsTsvAbsolute: `${TEST_BUCKET_WORKING_PREFIX}${uniqueFolder}/${tsvName}`,
+
+    testFolderSrc: `${TEST_BUCKET_OBJECT_PREFIX}${uniqueFolder}/${testNumber}-src`,
+    testFolderDest: `${TEST_BUCKET_OBJECT_PREFIX}${uniqueFolder}/${testNumber}-dest/`,
+  };
+}
+
+async function doTest1(stateMachineArn: string) {
+  const {
+    testFolderSrc,
+    testFolderDest,
+    testFolderObjectsTsvAbsolute,
+    testFolderObjectsTsvRelative,
+  } = getPaths(1);
+
+  // 3 files in standard storage (no thawing)
+  const sourceObjects = {
+    [`${testFolderSrc}/1.bin`]: StorageClass.STANDARD,
+    [`${testFolderSrc}/2.bin`]: StorageClass.STANDARD,
+    [`${testFolderSrc}/3.bin`]: StorageClass.STANDARD,
+  };
+
+  for (const [n, stor] of Object.entries(sourceObjects)) {
+    await makeTestObject(n, 256 * 1024, stor);
+  }
+
+  await makeObjectListCsv(
+    testFolderObjectsTsvAbsolute,
+    TEST_BUCKET,
+    Object.keys(sourceObjects),
+  );
+
+  await sfnClient.send(
+    new StartExecutionCommand({
+      stateMachineArn: stateMachineArn,
+      input: JSON.stringify({
+        sourceFilesCsvKey: testFolderObjectsTsvRelative,
+        destinationBucket: TEST_BUCKET,
+        destinationPrefixKey: testFolderDest,
+        maxItemsPerBatch: 1,
+      }),
+    }),
+  );
+}
+
+async function doTest2(stateMachineArn: string) {
+  const {
+    testFolderDest,
+    testFolderObjectsTsvAbsolute,
+    testFolderObjectsTsvRelative,
+  } = getPaths(1);
+
+  await makeObjectListCsv(testFolderObjectsTsvAbsolute, "umccr-10g-data-dev", [
+    "HG00096/HG00096.hard-filtered.vcf.gz",
+    "HG00097/HG00097.hard-filtered.vcf.gz",
+  ]);
+
+  await sfnClient.send(
+    new StartExecutionCommand({
+      stateMachineArn: stateMachineArn,
+      input: JSON.stringify({
+        sourceFilesCsvKey: testFolderObjectsTsvRelative,
+        destinationBucket: TEST_BUCKET,
+        destinationPrefixKey: testFolderDest,
+        maxItemsPerBatch: 1,
+      }),
+    }),
+  );
+}
+
+// s3:///HG00096/HG00096.hard-filtered.vcf.gz
+async function doTest3(stateMachineArn: string) {
+  const testFolderSrc = uniqueFolder + "-src2";
+  const testFolderDest = uniqueFolder + "-dest2";
+
+  const sourceObjects = {
+    [`${testFolderSrc}/1.bin`]: StorageClass.GLACIER_IR,
+    [`${testFolderSrc}/2.bin`]: StorageClass.STANDARD,
+    [`${testFolderSrc}/3.bin`]: StorageClass.GLACIER,
+  };
+
+  for (const [n, stor] of Object.entries(sourceObjects)) {
+    await makeTestObject(n, 1000, stor);
+  }
+
+  await makeObjectListCsv(
+    `${testFolderSrc}/objects-to-copy.tsv`,
+    TEST_BUCKET,
+    Object.keys(sourceObjects),
+  );
+
+  await sfnClient.send(
+    new StartExecutionCommand({
+      stateMachineArn: stateMachineArn,
+      input: JSON.stringify({
+        sourceFilesCsvKey: `${testFolderSrc}/objects-to-copy.tsv`,
+        destinationBucket: TEST_BUCKET,
+        destinationPrefixKey: testFolderDest,
+        maxItemsPerBatch: 1,
+      }),
     }),
   );
 }
@@ -43,32 +164,16 @@ async function makeTestObject(
     new PutObjectCommand({
       Bucket: TEST_BUCKET,
       Key: key,
-      Body: "Hello S3!",
+      Body: Buffer.alloc(sizeInBytes, 13),
       StorageClass: storageClass,
     }),
   );
 }
 
-async function createTestData() {
-  const sourceObjects = {
-    [`${testFolderSrc}/1.bin`]: StorageClass.GLACIER_IR,
-    [`${testFolderSrc}/2.bin`]: StorageClass.STANDARD,
-    [`${testFolderSrc}/3.bin`]: StorageClass.GLACIER,
-  };
-
-  for (const [n, stor] of Object.entries(sourceObjects)) {
-    await makeTestObject(n, 1000, stor);
-  }
-
-  await makeObjectListCsv(
-    `${testFolderSrc}/objects-to-copy.tsv`,
-    Object.keys(sourceObjects),
-  );
-}
+async function createTestData() {}
 
 (async () => {
-  console.log(`Src objects = ${TEST_BUCKET}:${testFolderSrc}`);
-  console.log(`Dest objects = ${TEST_BUCKET}:${testFolderDest}`);
+  console.log(`Working folder = ${TEST_BUCKET}:${uniqueFolder}`);
 
   const stepsDiscover = await discoveryClient.send(
     new DiscoverInstancesCommand({
@@ -95,28 +200,5 @@ async function createTestData() {
 
   const stateMachineArn = stateMachineDiscovered.Attributes["stateMachineArn"];
 
-  await createTestData();
-
-  /*await sfnClient.send(new StartExecutionCommand({
-    stateMachineArn: stateMachineArn,
-    input: JSON.stringify({
-      sourceFilesCsvBucket: TEST_BUCKET,
-      sourceFilesCsvKey: `${testFolderSrc}/objects-to-copy.tsv`,
-      destinationBucket: TEST_BUCKET,
-      maxItemsPerBatch: 1
-    })
-  }));*/
-
-  await sfnClient.send(
-    new StartExecutionCommand({
-      stateMachineArn: stateMachineArn,
-      input: JSON.stringify({
-        sourceFilesCsvBucket: TEST_BUCKET,
-        sourceFilesCsvKey: `${testFolderSrc}/objects-to-copy.tsv`,
-        destinationBucket: TEST_BUCKET,
-        destinationKey: testFolderDest,
-        maxItemsPerBatch: 1,
-      }),
-    }),
-  );
+  await doTest2(stateMachineArn);
 })();

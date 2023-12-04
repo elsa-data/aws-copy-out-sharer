@@ -1,13 +1,30 @@
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { AccessDeniedError, WrongRegionError } from "./errors";
+import {
+  AccessDeniedError,
+  DestinationPrefixKeyNoTrailingSlashError,
+  WrongRegionError,
+} from "./errors";
+
+// see the main src/copy-out-state-machine-input.ts for matching fields
 
 interface InvokeEvent {
   requiredRegion: string;
+
   destinationBucket: string;
+
+  destinationPrefixKey: string;
+
+  destinationStartCopyRelativeKey: string;
 }
 
 export async function handler(event: InvokeEvent) {
   console.log(JSON.stringify(event, null, 2));
+
+  if (event.destinationPrefixKey)
+    if (!event.destinationPrefixKey.endsWith("/"))
+      throw new DestinationPrefixKeyNoTrailingSlashError(
+        "The destination prefix key must either be an empty string or a string with a trailing slash",
+      );
 
   // we are being super specific here - more so than our normal client creation
   // the "required region" is where we are going
@@ -17,8 +34,8 @@ export async function handler(event: InvokeEvent) {
   try {
     const putCommand = new PutObjectCommand({
       Bucket: event.destinationBucket,
-      Key: "ELSA_DATA_STARTED_TRANSFER.txt",
-      Body: "A file created by Elsa Data copy out to ensure correct permissions",
+      Key: `${event.destinationPrefixKey}${event.destinationStartCopyRelativeKey}`,
+      Body: "A file created by copy out to ensure correct permissions and to indicate that start of the copy process",
     });
 
     await client.send(putCommand);
@@ -34,13 +51,3 @@ export async function handler(event: InvokeEvent) {
     throw e;
   }
 }
-
-/*handler({
-  requiredRegion: "ap-southeast-2",
-  //destinationBucket: "elsa-data-tmp"
-  //destinationBucket: "cdk-hnb659fds-assets-843407916570-us-east-1"
-  //destinationBucket: "elsa-data-replication-target-foo"
-  destinationBucket: "elsa-data-replication-target"
-  // destinationBucket: "elsa-data-copy-target-sydney"
-  // destinationBucket: "elsa-data-copy-target-tokyo"
-}) */

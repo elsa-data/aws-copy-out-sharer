@@ -13,11 +13,3 @@ export class AccessDeniedError extends Error {
     this.message = message;
   }
 }
-
-export class DestinationPrefixKeyNoTrailingSlashError extends Error {
-  constructor(message: string) {
-    super();
-    this.name = "DestinationPrefixKeyNoTrailingSlashError";
-    this.message = message;
-  }
-}
