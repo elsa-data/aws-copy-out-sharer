@@ -26,9 +26,12 @@ export type CopyOutStateMachineInputKeys = keyof CopyOutStateMachineInput;
 export const SOURCE_FILES_CSV_KEY_FIELD_NAME: CopyOutStateMachineInputKeys =
   "sourceFilesCsvKey";
 
+export const MAX_ITEMS_PER_BATCH_FIELD_NAME: CopyOutStateMachineInputKeys =
+  "maxItemsPerBatch";
+
 export const DESTINATION_BUCKET_FIELD_NAME: CopyOutStateMachineInputKeys =
   "destinationBucket";
-export const DESTINATION_KEY_FIELD_NAME: CopyOutStateMachineInputKeys =
+export const DESTINATION_PREFIX_KEY_FIELD_NAME: CopyOutStateMachineInputKeys =
   "destinationPrefixKey";
 
 export const DESTINATION_START_COPY_RELATIVE_KEY_FIELD_NAME: CopyOutStateMachineInputKeys =

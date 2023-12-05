@@ -4,7 +4,12 @@ import { S3CsvDistributedMap } from "./s3-csv-distributed-map";
 import { RcloneRunTaskConstruct } from "./rclone-run-task-construct";
 import { IVpc, SubnetType } from "aws-cdk-lib/aws-ec2";
 import { Cluster } from "aws-cdk-lib/aws-ecs";
-import { SOURCE_FILES_CSV_KEY_FIELD_NAME } from "./copy-out-state-machine-input";
+import {
+  DESTINATION_BUCKET_FIELD_NAME,
+  DESTINATION_PREFIX_KEY_FIELD_NAME,
+  MAX_ITEMS_PER_BATCH_FIELD_NAME,
+  SOURCE_FILES_CSV_KEY_FIELD_NAME,
+} from "./copy-out-state-machine-input";
 
 type Props = {
   vpc: IVpc;
@@ -61,6 +66,7 @@ export class RcloneMapConstruct extends Construct {
 
     this.distributedMap = new S3CsvDistributedMap(this, "RcloneMap", {
       toleratedFailurePercentage: 25,
+      batchMaxItemsPath: `$.${MAX_ITEMS_PER_BATCH_FIELD_NAME}`,
       itemReaderCsvHeaders: [bucketColumnName, keyColumnName],
       itemReader: {
         Bucket: props.workingBucket,
@@ -81,8 +87,8 @@ export class RcloneMapConstruct extends Construct {
       batchInput: {
         "rcloneDestination.$": JsonPath.format(
           "s3:{}/{}",
-          JsonPath.stringAt(`$.destinationBucket`),
-          JsonPath.stringAt("$.destinationPrefixKey"),
+          JsonPath.stringAt(`$.${DESTINATION_BUCKET_FIELD_NAME}`),
+          JsonPath.stringAt(`$.${DESTINATION_PREFIX_KEY_FIELD_NAME}`),
         ),
       },
       iterator: rcloneRunTask,
@@ -94,6 +100,10 @@ export class RcloneMapConstruct extends Construct {
           JsonPath.stringAt(`$.${SOURCE_FILES_CSV_KEY_FIELD_NAME}`),
         ),
       },
+      resultSelector: {
+        "manifestAbsoluteKey.$": "$.ResultWriterDetails.Key",
+      },
+      resultPath: `$.rcloneResults`,
     });
   }
 }

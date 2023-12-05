@@ -93,7 +93,6 @@ export class SummariseCopyLambdaStepConstruct extends Construct {
     );
 
     this.invocableLambda = new LambdaInvoke(this, `Summarise Copy Results`, {
-      inputPath: "$.ResultWriterDetails",
       lambdaFunction: summariseCopyLambda,
       resultPath: JsonPath.DISCARD,
     });

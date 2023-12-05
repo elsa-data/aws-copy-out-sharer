@@ -10,6 +10,7 @@ import {
   TEST_BUCKET_OBJECT_PREFIX,
   TEST_BUCKET_WORKING_PREFIX,
 } from "./constants";
+import { makeObjectDictionaryCsv, makeTestObject } from "./tests-util";
 
 const discoveryClient = new ServiceDiscoveryClient({});
 const s3Client = new S3Client({});
@@ -17,31 +18,6 @@ const sfnClient = new SFNClient({});
 
 // generate a unique run folder for this execution of the entire test suite
 const uniqueFolder = randomBytes(8).toString("hex");
-
-/**
- * Put a list of objects as a CSV into an object.
- *
- * @param absoluteCsvKey the key of the CSV in the working folder
- * @param keysBucket the source bucket of the objects
- * @param keys the keys of the objects
- */
-async function makeObjectListCsv(
-  absoluteCsvKey: string,
-  keysBucket: string,
-  keys: string[],
-) {
-  let content = "";
-  for (const k of keys) {
-    content += `${keysBucket},"${k}"\n`;
-  }
-  const response = await s3Client.send(
-    new PutObjectCommand({
-      Bucket: TEST_BUCKET,
-      Key: absoluteCsvKey,
-      Body: content,
-    }),
-  );
-}
 
 function getPaths(testNumber: number) {
   const tsvName = `${testNumber}-objects-to-copy.tsv`;
@@ -53,7 +29,7 @@ function getPaths(testNumber: number) {
     testFolderObjectsTsvRelative: `${uniqueFolder}/${tsvName}`,
     testFolderObjectsTsvAbsolute: `${TEST_BUCKET_WORKING_PREFIX}${uniqueFolder}/${tsvName}`,
 
-    testFolderSrc: `${TEST_BUCKET_OBJECT_PREFIX}${uniqueFolder}/${testNumber}-src`,
+    testFolderSrc: `${TEST_BUCKET_OBJECT_PREFIX}${uniqueFolder}/${testNumber}-src/`,
     testFolderDest: `${TEST_BUCKET_OBJECT_PREFIX}${uniqueFolder}/${testNumber}-dest/`,
   };
 }
@@ -74,14 +50,12 @@ async function doTest1(stateMachineArn: string) {
   };
 
   for (const [n, stor] of Object.entries(sourceObjects)) {
-    await makeTestObject(n, 256 * 1024, stor);
+    await makeTestObject(TEST_BUCKET, n, 256 * 1024, stor);
   }
 
-  await makeObjectListCsv(
-    testFolderObjectsTsvAbsolute,
-    TEST_BUCKET,
-    Object.keys(sourceObjects),
-  );
+  await makeObjectDictionaryCsv(TEST_BUCKET, testFolderObjectsTsvAbsolute, {
+    TEST_BUCKET: Object.keys(sourceObjects),
+  });
 
   await sfnClient.send(
     new StartExecutionCommand({
@@ -98,15 +72,54 @@ async function doTest1(stateMachineArn: string) {
 
 async function doTest2(stateMachineArn: string) {
   const {
+    testFolderSrc,
     testFolderDest,
     testFolderObjectsTsvAbsolute,
     testFolderObjectsTsvRelative,
   } = getPaths(1);
 
-  await makeObjectListCsv(testFolderObjectsTsvAbsolute, "umccr-10g-data-dev", [
-    "HG00096/HG00096.hard-filtered.vcf.gz",
-    "HG00097/HG00097.hard-filtered.vcf.gz",
-  ]);
+  // we are going to make objects that are in both the src *and* destination
+  // this will let us test our "checksum skipping"
+
+  // same name and same content
+  await makeTestObject(
+    TEST_BUCKET,
+    `${testFolderSrc}existing-a.bin`,
+    256 * 1024,
+  );
+  await makeTestObject(
+    TEST_BUCKET,
+    `${testFolderDest}existing-a.bin`,
+    256 * 1024,
+  );
+
+  // same name and different content - the result should be that rclone *does* copy this
+  await makeTestObject(
+    TEST_BUCKET,
+    `${testFolderSrc}existing-b.bin`,
+    64 * 1024,
+  );
+  await makeTestObject(
+    TEST_BUCKET,
+    `${testFolderDest}existing-b.bin`,
+    64 * 1024,
+    "STANDARD",
+    1,
+  );
+
+  await makeObjectDictionaryCsv(TEST_BUCKET, testFolderObjectsTsvAbsolute, {
+    "umccr-10g-data-dev": [
+      "HG00096/HG00096.hard-filtered.vcf.gz",
+      "HG00097/HG00097.hard-filtered.vcf.gz",
+      // this does not exist
+      "HG000XX/HG000XX.hard-filtered.vcf.gz",
+    ],
+    "not-a-bucket-that-exists": ["a-file-that-also-does-not-exist.bam"],
+    [TEST_BUCKET]: [
+      `${testFolderSrc}existing-a.bin`,
+      `${testFolderSrc}existing-b.bin`,
+    ],
+  });
 
   await sfnClient.send(
     new StartExecutionCommand({
@@ -115,7 +128,7 @@ async function doTest2(stateMachineArn: string) {
         sourceFilesCsvKey: testFolderObjectsTsvRelative,
         destinationBucket: TEST_BUCKET,
         destinationPrefixKey: testFolderDest,
-        maxItemsPerBatch: 1,
+        maxItemsPerBatch: 2,
       }),
     }),
   );
@@ -133,14 +146,12 @@ async function doTest3(stateMachineArn: string) {
   };
 
   for (const [n, stor] of Object.entries(sourceObjects)) {
-    await makeTestObject(n, 1000, stor);
+    await makeTestObject(TEST_BUCKET, n, 1000, stor);
   }
 
-  await makeObjectListCsv(
-    `${testFolderSrc}/objects-to-copy.tsv`,
-    TEST_BUCKET,
-    Object.keys(sourceObjects),
-  );
+  //await makeObjectDictionaryCsv(TEST_BUCKET, testFolderObjectsTsvAbsolute, {
+  //  TEST_BUCKET: Object.keys(sourceObjects),
+  //});
 
   await sfnClient.send(
     new StartExecutionCommand({
@@ -154,23 +165,6 @@ async function doTest3(stateMachineArn: string) {
     }),
   );
 }
-
-async function makeTestObject(
-  key: string,
-  sizeInBytes: number,
-  storageClass: StorageClass = "STANDARD",
-) {
-  const response = await s3Client.send(
-    new PutObjectCommand({
-      Bucket: TEST_BUCKET,
-      Key: key,
-      Body: Buffer.alloc(sizeInBytes, 13),
-      StorageClass: storageClass,
-    }),
-  );
-}
-
-async function createTestData() {}
 
 (async () => {
   console.log(`Working folder = ${TEST_BUCKET}:${uniqueFolder}`);

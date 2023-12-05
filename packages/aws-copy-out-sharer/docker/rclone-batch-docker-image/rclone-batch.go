@@ -122,6 +122,9 @@ func main() {
 				"--stats", "10000h",
 				// normally no bandwidth limiting ("0") - but can institute bandwidth limit if asked
 				"--bwlimit", If(debugBandwidthOk, debugBandwidth, "0"),
+				// because we are transferring between S3 - which has a consistent idea of checksums
+				// at src and destination we enable this options
+				"--checksum",
 				"copy", source, destination)
 
 			// we are only interested in stderr
@@ -225,13 +228,13 @@ func main() {
 						case 143:
 							results[which] = map[string]any{
 								"errors":    1,
-								"lastError": "Interrupted by SIGTERM",
+								"lastError": "interrupted by SIGTERM",
 								"source":    source}
 				            resultErrorCount++
 						default:
 							results[which] = map[string]any{
 								"errors":      1,
-								"lastError":   fmt.Sprintf("Exit of rclone with code %v but no JSON statistics block generated", runExitErr.ExitCode()),
+								"lastError":   fmt.Sprintf("exit of rclone with code %v but no JSON statistics block generated", runExitErr.ExitCode()),
 								"systemError": fmt.Sprintf("%#v", runExitErr),
 								"source":      source}
 				            resultErrorCount++
@@ -245,7 +248,7 @@ func main() {
 			// create a fake "compatible" stats block
 			results[which] = map[string]any{
 				"errors":    1,
-				"lastError": "Skipped due to previous SIGTERM received",
+				"lastError": "skipped due to previous SIGTERM received",
 				"source":      source}
 			resultErrorCount++
 		}

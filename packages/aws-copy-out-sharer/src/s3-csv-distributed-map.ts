@@ -36,6 +36,8 @@ export interface S3CsvDistributedMapProps {
   readonly maxConcurrencyPath?: JsonPath | string;
 
   readonly resultPath?: JsonPath | string;
+  readonly resultSelector?: Readonly<Record<string, JsonPath | string>>;
+
   readonly label?: string;
 }
 
@@ -102,6 +104,13 @@ export class S3CsvDistributedMap
   }
 
   override toStateJson(): object {
+    // if any of these are specified we want to put in an ItemBatcher
+    // block which will tell the DISTRIBUTED map to switch on batching
+    const useBatching =
+      !!this.props.batchMaxItemsPath ||
+      !!this.props.batchMaxItems ||
+      !!this.props.batchInput;
+
     const stateJson = {
       Type: "Map",
       ToleratedFailurePercentage: this.props.toleratedFailurePercentage,
@@ -122,16 +131,13 @@ export class S3CsvDistributedMap
         Parameters: this.props.itemReader,
       },
       ItemSelector: this.props.itemSelector,
-      ItemBatcher:
-        this.props.batchMaxItemsPath ||
-        this.props.batchMaxItems ||
-        this.props.batchInput
-          ? {
-              MaxItemsPerBatch: this.props.batchMaxItems,
-              MaxItemsPerBatchPath: this.props.batchMaxItemsPath,
-              BatchInput: this.props.batchInput,
-            }
-          : undefined,
+      ItemBatcher: useBatching
+        ? {
+            MaxItemsPerBatch: this.props.batchMaxItems,
+            MaxItemsPerBatchPath: this.props.batchMaxItemsPath,
+            BatchInput: this.props.batchInput,
+          }
+        : undefined,
       MaxConcurrency: this.props.maxConcurrency,
       MaxConcurrencyPath: this.props.maxConcurrencyPath,
       Label: this.props.label,
@@ -142,6 +148,7 @@ export class S3CsvDistributedMap
           }
         : undefined,
       ResultPath: this.props.resultPath,
+      ResultSelector: this.props.resultSelector,
     };
 
     return {

@@ -45,7 +45,7 @@ export class CopyOutStateMachineConstruct extends Construct {
 
       // these are the default objects that will be created in the destination prefix area
       destinationStartCopyRelativeKey: "STARTED_COPY.txt",
-      destinationEndCopyRelativeKey: "ENDED_COPY.txt",
+      destinationEndCopyRelativeKey: "ENDED_COPY.csv",
     };
 
     const canWriteLambdaStep = new CanWriteLambdaStepConstruct(
