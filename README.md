@@ -50,7 +50,16 @@ test invocations.
 {
   "sourceFilesCsvBucket": "bucket-with-csv",
   "sourceFilesCsvKey": "key-of-source-files.csv",
-  "destinationBucket": "a-target-bucket-in-same-region",
+  "destinationBucket": "a-target-bucket-in-same-region-but-not-same-account",
   "maxItemsPerBatch": 10
 }
 ```
+
+The copy will fan out wide (to sensible width (~ 100)) - but there is a small cost to the startup/shutdown
+of the Fargate tasks. The maxItemsPerBatch controls how many individuals files are attempted per
+Fargate task - though noting that we request SPOT tasks.
+
+So there is balance between the likelihood of SPOT interruptions v re-use of Fargate tasks. If
+tasks are SPOT interrupted - then the next invocation will skip already transferred files (assuming
+at least one is copied) - so it is probably safe and cheapest to leave the items per batch at 10
+and be prepared to perhaps re-execute the copy.

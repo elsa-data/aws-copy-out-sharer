@@ -73,6 +73,25 @@ export class RcloneRunTaskConstruct extends Construct {
       }),
     );
 
+    /*
+    import { LinuxParameters } from "aws-cdk-lib/aws-ecs";
+     const linux = new LinuxParameters(this, "Linux", {
+
+    });
+
+    linux.addTmpfs(
+      {
+        "mountOptions": [ TmpfsMountOption.RW ],
+        "containerPath": "/run",
+        "size": 10
+      },
+      {
+        "mountOptions": [ TmpfsMountOption.RW],
+        "containerPath": "/tmp",
+        "size": 10
+      }
+    ); */
+
     const containerDefinition = taskDefinition.addContainer("RcloneContainer", {
       // set the stop timeout to the maximum allowed under Fargate Spot
       // potentially this will let us finish our rclone operation (!!! - we don't actually try to let rclone finish - see Docker image - we should)
@@ -84,6 +103,10 @@ export class RcloneRunTaskConstruct extends Construct {
           platform: Platform.LINUX_AMD64,
         },
       ),
+      readonlyRootFilesystem: true,
+      // https://stackoverflow.com/questions/68933848/how-to-allow-container-with-read-only-root-filesystem-writing-to-tmpfs-volume
+      // DOESN'T WORK FOR FARGATE SO NEED TO THINK ABOUT THIS OTHER WAY
+      // linuxParameters: linux,
       logging: LogDriver.awsLogs({
         streamPrefix: "elsa-data-copy-out",
         logRetention: RetentionDays.ONE_WEEK,

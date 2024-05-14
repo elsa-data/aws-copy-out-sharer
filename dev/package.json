@@ -4,8 +4,10 @@
   "version": "0.0.0",
   "description": "Manual CDK deployment for development",
   "scripts": {
-    "deploy": "pnpm -w run build && cdk deploy",
-    "destroy": "pnpm -w run build && cdk destroy",
+    "deploy": "pnpm -w run build && cdk deploy ElsaDataDevCopyOutStack",
+    "destroy": "pnpm -w run build && cdk destroy ElsaDataDevCopyOutStack",
+    "agdeploy": "pnpm -w run build && cdk deploy ElsaDataAgCopyOutStack",
+    "agdestroy": "pnpm -w run build && cdk destroy ElsaDataAgCopyOutStack",
     "test": "ts-node --prefer-ts-exts test.ts",
     "test-quick": "ts-node --prefer-ts-exts test.ts"
   },

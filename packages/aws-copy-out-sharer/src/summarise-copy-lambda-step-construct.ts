@@ -83,12 +83,13 @@ export class SummariseCopyLambdaStepConstruct extends Construct {
     summariseCopyLambda.addToRolePolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
-        actions: ["s3:GetObject"],
-        resources: [
-          `arn:aws:s3:::${props.workingBucket}/${
-            props.workingBucketPrefixKey ?? ""
-          }*`,
-        ],
+        actions: ["s3:*"],
+        resources: ["*"],
+        //[
+        //`arn:aws:s3:::${props.workingBucket}/${
+        //  props.workingBucketPrefixKey ?? ""
+        //}*`,
+        //],
       }),
     );
 

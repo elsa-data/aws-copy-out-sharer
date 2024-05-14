@@ -165,9 +165,10 @@ export class CopyOutStateMachineConstruct extends Construct {
           "s3:AbortMultipartUpload",
         ],
         resources: [
-          `arn:aws:s3:::${props.workingBucket}/${
-            props.workingBucketPrefixKey ?? ""
-          }*`,
+          "*",
+          //`arn:aws:s3:::${props.workingBucket}/${
+          //  props.workingBucketPrefixKey ?? ""
+          //}*`,
         ],
       }),
     );

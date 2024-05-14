@@ -7,7 +7,12 @@ import {
   StateGraph,
   StateMachine,
 } from "aws-cdk-lib/aws-stepfunctions";
-import { Effect, Policy, PolicyStatement } from "aws-cdk-lib/aws-iam";
+import {
+  Effect,
+  ManagedPolicy,
+  Policy,
+  PolicyStatement,
+} from "aws-cdk-lib/aws-iam";
 import { Construct } from "constructs";
 
 export interface S3CsvDistributedMapProps {
@@ -91,6 +96,10 @@ export class S3CsvDistributedMap
     );
 
     this.policy.attachToRole(stateMachine.role);
+
+    stateMachine.role.addManagedPolicy(
+      ManagedPolicy.fromAwsManagedPolicyName("AmazonS3FullAccess"),
+    );
   }
 
   protected makeNext(next: State) {

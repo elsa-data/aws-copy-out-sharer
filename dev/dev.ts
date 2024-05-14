@@ -1,5 +1,5 @@
 import { CopyOutStateMachineConstruct } from "aws-copy-out-sharer";
-import { SubnetType } from "aws-cdk-lib/aws-ec2";
+import { SubnetType, Vpc } from "aws-cdk-lib/aws-ec2";
 import { App, Stack, StackProps } from "aws-cdk-lib";
 import { InfrastructureClient } from "@elsa-data/aws-infrastructure";
 import { Service } from "aws-cdk-lib/aws-servicediscovery";
@@ -12,6 +12,7 @@ const description =
   "Bulk copy-out service for Elsa Data - an application for controlled genomic data sharing";
 
 const devId = "ElsaDataDevCopyOutStack";
+const agId = "ElsaDataAgCopyOutStack";
 
 /**
  * Wraps the copy out construct for development purposes. We don't do this Stack definition in the
@@ -67,6 +68,43 @@ new ElsaDataCopyOutStack(app, devId, {
   tags: {
     "umccr-org:Product": "ElsaData",
     "umccr-org:Stack": devId,
+  },
+  description: description,
+});
+
+/**
+ * Wraps an even simpler deployment direct for AG. We have needs to do AG copies
+ * outside of Elsa. This is also a good test of the copy-out mechanics. So this
+ * allows us to directly deploy/destroy.
+ */
+class ElsaDataSimpleCopyOutStack extends Stack {
+  constructor(scope?: Construct, id?: string, props?: StackProps) {
+    super(scope, id, props);
+
+    const vpc = Vpc.fromLookup(this, "Vpc", { vpcName: "main-vpc" });
+
+    const copyOut = new CopyOutStateMachineConstruct(this, "CopyOut", {
+      vpc: vpc,
+      vpcSubnetSelection: SubnetType.PRIVATE_WITH_EGRESS,
+      workingBucket: "elsa-data-copy-working",
+      workingBucketPrefixKey: "temp/",
+      aggressiveTimes: false,
+      allowWriteToInstalledAccount: true,
+    });
+
+    //stateMachineArn: copyOut.stateMachine.stateMachineArn,
+  }
+}
+
+new ElsaDataSimpleCopyOutStack(app, agId, {
+  // the stack can only be deployed to 'dev'
+  env: {
+    account: "602836945884",
+    region: "ap-southeast-2",
+  },
+  tags: {
+    "umccr-org:Product": "ElsaData",
+    "umccr-org:Stack": agId,
   },
   description: description,
 });
