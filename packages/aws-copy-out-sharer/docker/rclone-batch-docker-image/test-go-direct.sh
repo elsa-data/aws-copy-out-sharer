@@ -90,8 +90,8 @@ wait %1
 
 cat "$TEMPD/result.json"
 
-assert " cat $TEMPD/result.json | jq -r '.[0] | .lastError' " "Interrupted by SIGTERM"
-assert " cat $TEMPD/result.json | jq -r '.[1] | .lastError' " "Skipped due to previous SIGTERM received"
+assert " cat $TEMPD/result.json | jq -r '.[0] | .lastError' " "interrupted by SIGTERM"
+assert " cat $TEMPD/result.json | jq -r '.[1] | .lastError' " "skipped due to previous SIGTERM received"
 
 rm "$TEMPD/result.json"
 
