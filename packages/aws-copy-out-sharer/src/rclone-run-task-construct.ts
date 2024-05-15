@@ -1,7 +1,7 @@
 import { Construct } from "constructs";
-import { ManagedPolicy } from "aws-cdk-lib/aws-iam";
+import { ManagedPolicy, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { IntegrationPattern, JsonPath } from "aws-cdk-lib/aws-stepfunctions";
-import { Duration, Stack, Tags } from "aws-cdk-lib";
+import { Duration, Stack } from "aws-cdk-lib";
 import {
   AssetImage,
   CpuArchitecture,
@@ -25,9 +25,19 @@ import { SubnetType } from "aws-cdk-lib/aws-ec2";
 type Props = {
   fargateCluster: ICluster;
   vpcSubnetSelection: SubnetType;
+
+  /**
+   * If true, will allow the run task to copy to a bucket that is
+   * in the same account. Otherwise, and by default, the copy task
+   * is set up to not be able to copy to a bucket in the same account as it
+   * is installed. This is a security mechanism as writes to buckets in the
+   * same account is allowed implicitly but is dangerous. This should only
+   * be set to true for development/testing.
+   */
+  //allowWriteToThisAccount?: boolean; WIP NEED TO IMPLEMENT
 };
 
-export class FargateRunTaskConstruct extends Construct {
+export class RcloneRunTaskConstruct extends Construct {
   public readonly ecsRunTask: EcsRunTask;
 
   constructor(scope: Construct, id: string, props: Props) {
@@ -40,11 +50,11 @@ export class FargateRunTaskConstruct extends Construct {
       },
       cpu: 256,
       // there is a warning in the rclone documentation about problems with mem < 1GB - but I think that
-      // is mainly for large syncs.. we do individual file copies so 512 should be fine
+      // is mainly for large syncs... we do individual/small file copies so 512 should be fine
       memoryLimitMiB: 512,
     });
 
-    Tags.of(taskDefinition).add("test", "tag");
+    // Tags.of(taskDefinition).add("test", "tag");
 
     // we need to give the rclone task the ability to do the copy out in S3
     // TODO can we limit this to reading from our designated buckets and writing out
@@ -52,18 +62,57 @@ export class FargateRunTaskConstruct extends Construct {
       ManagedPolicy.fromAwsManagedPolicyName("AmazonS3FullAccess"),
     );
 
-    const containerDefinition = taskDefinition.addContainer("RcloneContainer", {
-      // set the stop timeout to the maximum allowed under Fargate - as potentially this will let us finish
-      // our rclone operation
-      stopTimeout: Duration.seconds(120),
-      image: new AssetImage(join(__dirname, "rclone-batch-copy-docker-image"), {
-        // note we are forcing the X86 platform because we want to use Fargate spot which is only available intel/x86
-        platform: Platform.LINUX_AMD64,
+    taskDefinition.taskRole.addToPrincipalPolicy(
+      new PolicyStatement({
+        resources: ["*"],
+        actions: [
+          "states:SendTaskSuccess",
+          "states:SendTaskFailure",
+          "states:SendTaskHeartbeat",
+        ],
       }),
+    );
+
+    /*
+    import { LinuxParameters } from "aws-cdk-lib/aws-ecs";
+     const linux = new LinuxParameters(this, "Linux", {
+
+    });
+
+    linux.addTmpfs(
+      {
+        "mountOptions": [ TmpfsMountOption.RW ],
+        "containerPath": "/run",
+        "size": 10
+      },
+      {
+        "mountOptions": [ TmpfsMountOption.RW],
+        "containerPath": "/tmp",
+        "size": 10
+      }
+    ); */
+
+    const containerDefinition = taskDefinition.addContainer("RcloneContainer", {
+      // set the stop timeout to the maximum allowed under Fargate Spot
+      // potentially this will let us finish our rclone operation (!!! - we don't actually try to let rclone finish - see Docker image - we should)
+      stopTimeout: Duration.seconds(120),
+      image: new AssetImage(
+        join(__dirname, "..", "docker", "rclone-batch-docker-image"),
+        {
+          // note we are forcing the X86 platform because we want to use Fargate spot which is only available intel/x86
+          platform: Platform.LINUX_AMD64,
+        },
+      ),
+      readonlyRootFilesystem: true,
+      // https://stackoverflow.com/questions/68933848/how-to-allow-container-with-read-only-root-filesystem-writing-to-tmpfs-volume
+      // DOESN'T WORK FOR FARGATE SO NEED TO THINK ABOUT THIS OTHER WAY
+      // linuxParameters: linux,
       logging: LogDriver.awsLogs({
         streamPrefix: "elsa-data-copy-out",
         logRetention: RetentionDays.ONE_WEEK,
       }),
+      // eg the equivalent of
+      // RCLONE_CONFIG_S3_TYPE=s3 RCLONE_CONFIG_S3_PROVIDER=AWS RCLONE_CONFIG_S3_ENV_AUTH=true RCLONE_CONFIG_S3_REGION=ap-southeast-2 rclone copy src dest
       environment: {
         RCLONE_CONFIG_S3_TYPE: "s3",
         RCLONE_CONFIG_S3_PROVIDER: "AWS",
@@ -74,11 +123,10 @@ export class FargateRunTaskConstruct extends Construct {
       },
     });
 
-    // RCLONE_CONFIG_S3_TYPE=s3 RCLONE_CONFIG_S3_PROVIDER=AWS RCLONE_CONFIG_S3_ENV_AUTH=true RCLONE_CONFIG_S3_REGION=ap-southeast-2 rclone copy src dest
-
     // https://github.com/aws/aws-cdk/issues/20013
     this.ecsRunTask = new EcsRunTask(this, "Copy File with Rclone", {
-      integrationPattern: IntegrationPattern.RUN_JOB,
+      // we use task tokens as we want to return rclone stats/results
+      integrationPattern: IntegrationPattern.WAIT_FOR_TASK_TOKEN,
       cluster: props.fargateCluster,
       taskDefinition: taskDefinition,
       launchTarget: new EcsFargateSpotOnlyLaunchTarget({
@@ -87,24 +135,28 @@ export class FargateRunTaskConstruct extends Construct {
       subnets: {
         subnetType: props.vpcSubnetSelection,
       },
-      resultSelector: {
-        // NOTE almost any amount of output can cause the joint result to overflow..
-        // best to look up all this data at the ECS Task level
-        // have left these here to show how you can export ECS output if you want
-        // "capacityProviderName.$": JsonPath.stringAt("$.CapacityProviderName"),
-        // "stoppedAt.$": JsonPath.numberAt("$.StoppedAt"),
-        // "stoppedReason.$": JsonPath.stringAt("$.StoppedReason"),
-      },
+      //resultSelector: {
+      // "rclone.$": JsonPath.objectAt("$"),
+      // "capacityProviderName.$": JsonPath.stringAt("$.CapacityProviderName"),
+      //"stoppedAt.$": JsonPath.numberAt("$.StoppedAt"),
+      //"stoppedReason.$": JsonPath.stringAt("$.StoppedReason"),
+      // },
+      resultPath: "$.rcloneResult",
       containerOverrides: [
         {
           containerDefinition: containerDefinition,
-          command: JsonPath.listAt("$.Items[*].source"),
+          command: JsonPath.listAt("$.Items[*].rcloneSource"),
           environment: [
             {
-              name: "destination",
-              value: JsonPath.stringAt(
-                "$.BatchInput.destinationBucketForRclone",
-              ),
+              name: "RB_DESTINATION",
+              // note this might be just a bucket name, or a bucket name with path
+              // (that decision is made higher in the stack)
+              // as far as rclone binary itself is concerned, it does not matter
+              value: JsonPath.stringAt("$.BatchInput.rcloneDestination"),
+            },
+            {
+              name: "RB_TASK_TOKEN",
+              value: JsonPath.stringAt("$$.Task.Token"),
             },
           ],
         },

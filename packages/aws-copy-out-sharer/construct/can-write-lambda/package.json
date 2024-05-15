@@ -1,8 +1,0 @@
-{
-  "name": "can-write-lambda",
-  "version": "1.0.0",
-  "main": "can-write-lambda.js",
-  "dependencies": {
-    "@aws-sdk/client-s3": "^3.405.0"
-  }
-}

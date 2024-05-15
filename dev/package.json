@@ -3,10 +3,24 @@
   "private": true,
   "version": "0.0.0",
   "description": "Manual CDK deployment for development",
+  "scripts": {
+    "deploy": "pnpm -w run build && cdk deploy ElsaDataDevCopyOutStack",
+    "destroy": "pnpm -w run build && cdk destroy ElsaDataDevCopyOutStack",
+    "agdeploy": "pnpm -w run build && cdk deploy ElsaDataAgCopyOutStack",
+    "agdestroy": "pnpm -w run build && cdk destroy ElsaDataAgCopyOutStack",
+    "test": "ts-node --prefer-ts-exts test.ts",
+    "test-quick": "ts-node --prefer-ts-exts test.ts"
+  },
   "dependencies": {
-    "aws-cdk": "2.93.0",
-    "aws-cdk-lib": "2.93.0",
-    "aws-copy-out-sharer": "link:../packages/aws-copy-out-sharer"
+    "@aws-sdk/client-s3": "3.576.0",
+    "@aws-sdk/client-servicediscovery": "3.576.0",
+    "@aws-sdk/client-sfn": "3.576.0",
+    "@aws-sdk/client-sso-oidc": "3.574.0",
+    "@elsa-data/aws-infrastructure": "1.5.1",
+    "aws-cdk": "2.141.0",
+    "aws-cdk-lib": "2.141.0",
+    "aws-copy-out-sharer": "link:../packages/aws-copy-out-sharer",
+    "constructs": "10.3.0"
   },
   "devDependencies": {}
 }
