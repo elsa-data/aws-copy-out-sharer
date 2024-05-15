@@ -87,7 +87,6 @@ class ElsaDataSimpleCopyOutStack extends Stack {
       vpc: vpc,
       vpcSubnetSelection: SubnetType.PRIVATE_WITH_EGRESS,
       workingBucket: "elsa-data-copy-working",
-      workingBucketPrefixKey: "temp/",
       aggressiveTimes: false,
       allowWriteToInstalledAccount: true,
     });

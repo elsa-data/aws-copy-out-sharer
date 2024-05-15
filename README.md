@@ -55,8 +55,9 @@ test invocations.
 }
 ```
 
-The copy will fan out wide (to sensible width (~ 100)) - but there is a small cost to the startup/shutdown
-of the Fargate tasks. The maxItemsPerBatch controls how many individuals files are attempted per
+The copy will fan-out wide (to sensible width (~ 100)) - but there is a small AWS Config
+cost to the startup/shutdown
+of the Fargate tasks. Therefore the `maxItemsPerBatch` controls how many individuals files are attempted per
 Fargate task - though noting that we request SPOT tasks.
 
 So there is balance between the likelihood of SPOT interruptions v re-use of Fargate tasks. If

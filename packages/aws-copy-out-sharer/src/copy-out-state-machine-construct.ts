@@ -40,7 +40,7 @@ export class CopyOutStateMachineConstruct extends Construct {
       maxItemsPerBatch: 8,
       copyConcurrency: 80,
       requiredRegion: Stack.of(this).region,
-      // by default we just copy into the top level of the destination bucket
+      // by default, we just copy into the top level of the destination bucket
       destinationPrefixKey: "",
 
       // these are the default objects that will be created in the destination prefix area
